@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Attendify Attendance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #e0eafc; 
+            overflow-x: hidden; 
+        }
+        h1, h2, h3 { 
+            font-family: 'Poppins', sans-serif; 
+        }
+        
+        /* --- Background Animation --- */
+        .background-container { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; 
+            background: linear-gradient(-45deg, #e0eafc, #cfdef3, #e6dada, #f0e1e1); 
+            background-size: 400% 400%; 
+            animation: gradientBG 15s ease infinite; 
+        }
+        @keyframes gradientBG { 
+            0% { background-position: 0% 50%; } 
+            50% { background-position: 100% 50%; } 
+            100% { background-position: 0% 50%; } 
+        }
+        .shapes span { 
+            position: absolute; bottom: -150px; background-color: rgba(255, 255, 255, 0.1); 
+            border-radius: 50%; animation: floatUp 25s linear infinite; 
+        }
+        .shapes span:nth-child(1) { width: 80px; height: 80px; left: 25%; }
+        .shapes span:nth-child(2) { width: 50px; height: 50px; left: 70%; }
+        @keyframes floatUp { to { transform: translateY(-120vh) rotate(720deg); opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+
+        /* --- Enhanced Glass Card Styles --- */
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.35); /* Slightly more opaque for premium feel */
+            backdrop-filter: blur(40px); 
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+            box-shadow: 0 20px 50px 0 rgba(31, 38, 135, 0.15); 
+            transition: all 0.3s ease; 
+        }
+        
+        .glass-input { 
+            background: rgba(255, 255, 255, 0.6); 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            backdrop-filter: blur(10px); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-input:focus { 
+            background: rgba(255, 255, 255, 0.9); 
+            border-color: #007aff; 
+            outline: none; 
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15); 
+            transform: scale(1.01);
+        }
+
+        /* --- Button Gradients --- */
+        .btn-gradient-blue { background: linear-gradient(135deg, #007aff 0%, #0062cc 100%); }
+        .btn-gradient-dark { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+        .btn-gradient-green { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); }
+        .btn-gradient-purple { background: linear-gradient(135deg, #7e22ce 0%, #6b21a8 100%); }
+        .btn-hover-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.3); }
+
+        .tab-content { display: none; animation: fadeIn 0.4s ease-out; }
+        .tab-content.active { display: block; }
+
+        /* --- Animated Logo Styles --- */
+        :root { --logo-primary-color: #007aff; --logo-animation-speed: 3.5s; }
+        .logo-container { width: 70px; height: 70px; position: relative; display: flex; justify-content: center; align-items: center; margin: auto; background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15); }
+        .face-icon { width: 40px; height: 40px; position: relative; color: var(--logo-primary-color); }
+        .eye { width: 5px; height: 5px; background-color: var(--logo-primary-color); border-radius: 50%; position: absolute; top: 12px; }
+        .eye.left { left: 9px; } .eye.right { right: 9px; }
+        .smile { width: 16px; height: 8px; border: 2px solid transparent; border-bottom: 2px solid var(--logo-primary-color); border-radius: 0 0 16px 16px; position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%); animation: smile-animate var(--logo-animation-speed) ease-in-out infinite alternate; animation-delay: 0.25s; }
+        .corner { width: 12px; height: 12px; position: absolute; border-style: solid; border-color: var(--logo-primary-color); border-width: 3px; animation: pop-in-out var(--logo-animation-speed) ease-in-out infinite alternate; }
+        .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
+        .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; animation-delay: 0.5s; }
+        .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-radius: 0 0 0 8px; animation-delay: 0.5s; }
+        .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
+        .scan-bar { position: absolute; left: 0; top: 0; width: 100%; height: 2px; background: linear-gradient(to right, transparent 0%, rgba(0, 122, 255, 0.1) 20%, rgba(0, 122, 255, 0.9) 50%, rgba(0, 122, 255, 0.1) 80%, transparent 100%); opacity: 0; animation: professional-scan var(--logo-animation-speed) ease-in-out infinite alternate; }
+        @keyframes smile-animate { from { transform: translateX(-50%) scaleX(1); } to { transform: translateX(-50%) scaleX(0.75); } }
+        @keyframes pop-in-out { from { transform: scale(1); } to { transform: scale(0.92); } }
+        @keyframes professional-scan { 0% { transform: translateY(6px); opacity: 0; } 10% { transform: translateY(6px); opacity: 1; } 90% { transform: translateY(32px); opacity: 1; } 100% { transform: translateY(32px); opacity: 0; } }
+
+        /* Messages */
+        .status-msg { padding: 12px; border-radius: 12px; margin-bottom: 20px; font-size: 0.9rem; display: none; text-align: center; font-weight: 500; animation: fadeIn 0.3s ease-out; }
+        .status-error { background-color: rgba(254, 226, 226, 0.8); color: #991b1b; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .status-success { background-color: rgba(220, 252, 231, 0.8); color: #166534; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .status-pending { background-color: rgba(254, 249, 195, 0.8); color: #854d0e; border: 1px solid rgba(234, 179, 8, 0.3); }
+
+        /* --- Access Manager Button (Circular Expander - Top Right) --- */
+        .circular-expander {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+            width: 48px;
+            height: 48px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+            color: #475569;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .circular-expander:hover, .circular-expander:focus {
+            width: 170px; /* Wider to fit "Access Manager" */
+            background: white;
+            color: #7e22ce; /* Purple for admin theme */
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .circular-expander .btn-text {
+            opacity: 0;
+            white-space: nowrap;
+            max-width: 0;
+            margin-left: 0;
+            transition: all 0.3s ease;
+            font-weight: 700;
+            font-size: 0.875rem;
+            transform: translateX(10px);
+        }
+
+        .circular-expander:hover .btn-text, .circular-expander:focus .btn-text {
+            opacity: 1;
+            max-width: 150px;
+            margin-left: 8px;
+            transform: translateX(0);
+        }
+
+        .circular-expander i {
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .circular-expander:hover i {
+            transform: rotate(15deg) scale(1.1);
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-800 flex flex-col items-center justify-center min-h-screen p-4">
+    
+    <div class="background-container"><div class="shapes"><span></span><span></span></div></div>
+
+    <!-- Admin Access Button (Now Top Right) -->
+    <!-- ADDED ID HERE -->
+    <button id="access-manager-btn" onclick="showView('superAdminLogin')" class="circular-expander" title="Access Manager">
+        <i data-lucide="shield-alert" class="w-5 h-5"></i>
+        <span class="btn-text">Access Manager</span>
+    </button>
+
+    <!-- Header Logo -->
+    <div class="mb-8 fade-in">
+        <div class="logo-container mb-4 transform hover:scale-105 transition-transform duration-300">
+            <div class="face-icon">
+                <div class="corner top-left"></div><div class="corner top-right"></div>
+                <div class="corner bottom-left"></div><div class="corner bottom-right"></div>
+                <div class="eye left"></div><div class="eye right"></div>
+                <div class="smile"></div><div class="scan-bar"></div>
+            </div>
+        </div>
+        <h1 class="text-3xl font-bold text-slate-800 text-center tracking-tight">Attendify</h1>
+        <p class="text-slate-500 text-sm text-center mt-1 font-medium">Secure Access Portal</p>
+    </div>
+
+    <!-- Role Switcher -->
+    <div id="role-switcher" class="glass-input p-1.5 rounded-2xl flex relative mb-8 fade-in shadow-lg w-full max-w-xs mx-auto">
+        <button onclick="switchRole('student')" id="btn-student" class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white shadow-md text-blue-600 transition-all transform scale-100">Student</button>
+        <button onclick="switchRole('teacher')" id="btn-teacher" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-700 transition-all">Teacher</button>
+    </div>
+
+    <!-- Main Card Container -->
+    <div class="w-full max-w-md fade-in">
+        <div class="glass-card rounded-[2rem] p-8 sm:p-10">
+            
+            <div id="forms-container">
+
+                <!-- SUCCESS VIEW -->
+                <div id="success-view" class="tab-content text-center">
+                    <div class="flex justify-center mb-6">
+                        <div class="w-24 h-24 bg-green-50/50 rounded-full flex items-center justify-center shadow-inner border border-white/40 text-green-500 animate-pulse">
+                            <i data-lucide="check-circle" class="w-12 h-12"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">Welcome Back!</h3>
+                    <p class="text-slate-600 mb-8">Hello, <span id="user-name-display" class="font-bold text-slate-900">User</span>.</p>
+                    <div id="role-actions" class="space-y-4"></div>
+                    <button onclick="logout()" class="mt-8 text-sm text-slate-400 hover:text-red-500 font-semibold transition-colors flex items-center justify-center gap-2 mx-auto">
+                        <i data-lucide="log-out" class="w-4 h-4"></i> Sign Out
+                    </button>
+                </div>
+
+                <!-- STUDENT LOGIN -->
+                <div id="student-login" class="tab-content active">
+                    <div class="flex justify-center mb-8">
+                        <div class="w-20 h-20 bg-gradient-to-br from-blue-50 to-white rounded-2xl flex items-center justify-center shadow-lg border border-white/50 text-blue-600 transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                            <i data-lucide="graduation-cap" class="w-10 h-10"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <h3 class="text-2xl font-bold text-slate-800">Student Login</h3>
+                        <p class="text-slate-500 text-sm mt-1">Please sign in to continue</p>
+                    </div>
+
+                    <div id="msg-student-login" class="status-msg"></div>
+
+                    <form onsubmit="handleLogin(event, 'student')" class="space-y-5">
+                        <div class="relative group">
+                            <i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                            <input type="text" name="id" placeholder="Student ID" required class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-slate-700 placeholder-slate-400 font-medium">
+                        </div>
+                        <div class="relative group">
+                            <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                            <input type="password" name="password" placeholder="Password" required class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-slate-700 placeholder-slate-400 font-medium">
+                        </div>
+                        <button type="submit" class="w-full btn-gradient-blue btn-hover-lift text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 shadow-lg shadow-blue-500/20">
+                            <span>Student Login</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                    <div class="mt-8 text-center border-t border-slate-200/50 pt-6">
+                        <p class="text-slate-600 text-sm font-medium">
+                            Don't have an account? <button onclick="showView('studentRegister')" class="text-blue-600 font-bold hover:underline ml-1">Register Now</button>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- TEACHER LOGIN -->
+                <div id="teacher-login" class="tab-content">
+                    <div class="flex justify-center mb-8">
+                        <div class="w-20 h-20 bg-gradient-to-br from-slate-50 to-white rounded-2xl flex items-center justify-center shadow-lg border border-white/50 text-slate-700 transform -rotate-3 hover:rotate-0 transition-transform duration-300">
+                            <i data-lucide="shield-check" class="w-10 h-10"></i>
+                        </div>
+                    </div>
+                    <div class="text-center mb-8">
+                        <h3 class="text-2xl font-bold text-slate-800">Teacher Login</h3>
+                        <p class="text-slate-500 text-sm mt-1">Administrative Access Only</p>
+                    </div>
+                    <div id="msg-teacher-login" class="status-msg"></div>
+                    <form onsubmit="handleLogin(event, 'teacher')" class="space-y-5">
+                        <div class="relative group">
+                            <i data-lucide="briefcase" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-slate-800 transition-colors"></i>
+                            <input type="text" name="id" placeholder="Teacher ID" required class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-slate-700 placeholder-slate-400 font-medium">
+                        </div>
+                        <div class="relative group">
+                            <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-slate-800 transition-colors"></i>
+                            <input type="password" name="password" placeholder="Password" required class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-slate-700 placeholder-slate-400 font-medium">
+                        </div>
+                        <button type="submit" class="w-full btn-gradient-dark btn-hover-lift text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 shadow-lg shadow-slate-900/20">
+                            <span>Admin Login</span>
+                            <i data-lucide="shield" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                    <div class="mt-8 text-center border-t border-slate-200/50 pt-6">
+                        <p class="text-slate-600 text-sm font-medium">
+                            New faculty member? <button onclick="showView('teacherRegister')" class="text-slate-800 font-bold hover:underline ml-1">Register Now</button>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SUPER ADMIN ACCESS -->
+                <div id="super-admin-login" class="tab-content">
+                    <div class="flex justify-center mb-8">
+                        <div class="w-20 h-20 bg-gradient-to-br from-purple-50 to-white rounded-2xl flex items-center justify-center shadow-lg border border-white/50 text-purple-600 transform scale-110">
+                            <i data-lucide="key-round" class="w-10 h-10"></i>
+                        </div>
+                    </div>
+                    <div class="text-center mb-8">
+                        <h3 class="text-2xl font-bold text-slate-800">Access Manager</h3>
+                        <p class="text-slate-500 text-sm mt-1">Super Admin Verification</p>
+                    </div>
+                    <div id="msg-super-admin" class="status-msg"></div>
+                    <form onsubmit="handleSuperAdminLogin(event)" class="space-y-5">
+                        <div class="relative group">
+                            <i data-lucide="lock-keyhole" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-purple-600 transition-colors"></i>
+                            <input type="password" name="password" placeholder="Access Code" required class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-slate-700 placeholder-slate-400 font-medium">
+                        </div>
+                        <button type="submit" class="w-full btn-gradient-purple btn-hover-lift text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-2 shadow-lg shadow-purple-500/20">
+                            <span>Manage Requests</span>
+                            <i data-lucide="settings" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                    <div class="mt-8 text-center border-t border-slate-200/50 pt-6">
+                        <button onclick="showView('studentLogin')" class="text-slate-500 hover:text-slate-700 text-sm font-semibold flex items-center justify-center gap-2 mx-auto">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Login
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STUDENT REGISTER -->
+                <div id="student-register" class="tab-content">
+                    <div class="flex justify-center mb-6">
+                        <div class="w-16 h-16 bg-white/50 rounded-2xl flex items-center justify-center shadow-md border border-white/30 text-green-600">
+                            <i data-lucide="user-plus" class="w-8 h-8"></i>
+                        </div>
+                    </div>
+                    <div class="text-center mb-6"><h3 class="text-2xl font-bold text-slate-800">Create Account</h3></div>
+                    <div id="msg-student-reg" class="status-msg"></div>
+                    <form onsubmit="handleRegister(event, 'student')" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Full Name</label>
+                                <input type="text" name="name" required class="glass-input w-full px-4 py-2.5 rounded-xl text-slate-800 font-medium">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Student ID</label>
+                                <input type="text" name="id" required class="glass-input w-full px-4 py-2.5 rounded-xl text-slate-800 font-medium">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Password</label>
+                            <input type="password" name="password" required class="glass-input w-full px-4 py-2.5 rounded-xl text-slate-800 font-medium">
+                        </div>
+                        <button type="submit" class="w-full btn-gradient-green btn-hover-lift text-white font-bold py-3 rounded-xl shadow-lg shadow-green-500/20 mt-2">Submit Application</button>
+                    </form>
+                    <div class="mt-6 text-center">
+                        <button onclick="showView('studentLogin')" class="text-slate-500 hover:text-slate-700 text-sm font-semibold flex items-center justify-center gap-2 mx-auto">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Login
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TEACHER REGISTER -->
+                <div id="teacher-register" class="tab-content">
+                    <div class="flex justify-center mb-6">
+                        <div class="w-16 h-16 bg-white/50 rounded-2xl flex items-center justify-center shadow-md border border-white/30 text-purple-600">
+                            <i data-lucide="user-cog" class="w-8 h-8"></i>
+                        </div>
+                    </div>
+                    <div class="text-center mb-6"><h3 class="text-2xl font-bold text-slate-800">Faculty Registration</h3></div>
+                    <div id="msg-teacher-reg" class="status-msg"></div>
+                    <form onsubmit="handleRegister(event, 'teacher')" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Full Name</label>
+                                <input type="text" name="name" required class="glass-input w-full px-4 py-2.5 rounded-xl text-slate-800 font-medium">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Teacher ID</label>
+                                <input type="text" name="id" required class="glass-input w-full px-4 py-2.5 rounded-xl text-slate-800 font-medium">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Department</label>
+                            <input type="text" name="dept" required class="glass-input w-full px-4 py-2.5 rounded-xl text-slate-800 font-medium">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Password</label>
+                            <input type="password" name="password" required class="glass-input w-full px-4 py-2.5 rounded-xl text-slate-800 font-medium">
+                        </div>
+                        <button type="submit" class="w-full btn-gradient-dark btn-hover-lift text-white font-bold py-3 rounded-xl shadow-lg shadow-slate-900/20 mt-2">Submit Application</button>
+                    </form>
+                    <div class="mt-6 text-center">
+                        <button onclick="showView('teacherLogin')" class="text-slate-500 hover:text-slate-700 text-sm font-semibold flex items-center justify-center gap-2 mx-auto">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Login
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        const views = {
+            studentLogin: document.getElementById('student-login'),
+            studentRegister: document.getElementById('student-register'),
+            teacherLogin: document.getElementById('teacher-login'),
+            teacherRegister: document.getElementById('teacher-register'),
+            success: document.getElementById('success-view'),
+            superAdminLogin: document.getElementById('super-admin-login')
+        };
+        const buttons = { student: document.getElementById('btn-student'), teacher: document.getElementById('btn-teacher') };
+        const switcher = document.getElementById('role-switcher');
+
+        function switchRole(role) {
+            if (role === 'student') {
+                buttons.student.className = "flex-1 py-2.5 rounded-xl text-sm font-bold bg-white shadow-md text-blue-600 transition-all transform scale-100";
+                buttons.teacher.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-700 transition-all scale-95 opacity-80 hover:opacity-100";
+                showView('studentLogin');
+            } else {
+                buttons.teacher.className = "flex-1 py-2.5 rounded-xl text-sm font-bold bg-white shadow-md text-slate-800 transition-all transform scale-100";
+                buttons.student.className = "flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-700 transition-all scale-95 opacity-80 hover:opacity-100";
+                showView('teacherLogin');
+            }
+        }
+
+        function showView(name) {
+            document.querySelectorAll('.status-msg').forEach(el => el.style.display = 'none');
+            Object.values(views).forEach(el => el.classList.remove('active'));
+            views[name].classList.add('active');
+            
+            // Hide/Show switcher based on view
+            if (['studentLogin', 'teacherLogin'].includes(name)) {
+                switcher.style.display = 'flex';
+                switcher.classList.add('fade-in');
+            } else {
+                switcher.style.display = 'none';
+            }
+
+            // MODIFIED: Hide the Access Manager button when on the Super Admin login view
+            const accessBtn = document.getElementById('access-manager-btn');
+            if (accessBtn) {
+                if (name === 'superAdminLogin') {
+                    accessBtn.style.display = 'none';
+                } else {
+                    accessBtn.style.display = 'flex'; // Restore it to flex to maintain layout
+                }
+            }
+
+            lucide.createIcons();
+        }
+
+        function showMessage(id, text, type) {
+            const el = document.getElementById(id);
+            el.innerText = text;
+            if(type === 'error') el.className = 'status-msg status-error';
+            else if(type === 'success') el.className = 'status-msg status-success';
+            else if(type === 'pending') el.className = 'status-msg status-pending';
+            el.style.display = 'block';
+        }
+
+        async function handleRegister(e, role) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.role = role;
+            
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    const msgId = role === 'student' ? 'msg-student-reg' : 'msg-teacher-reg';
+                    showMessage(msgId, 'Application Submitted! Waiting for Admin Approval.', 'pending');
+                    e.target.reset();
+                    // Don't redirect immediately so they can read the message
+                } else {
+                    showMessage(role === 'student' ? 'msg-student-reg' : 'msg-teacher-reg', result.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showMessage(role === 'student' ? 'msg-student-reg' : 'msg-teacher-reg', 'Server Error', 'error');
+            }
+        }
+
+        async function handleLogin(e, role) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.role = role;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    if (role === 'teacher') {
+                        window.location.href = '/'; 
+                        return;
+                    }
+                    document.getElementById('user-name-display').innerText = result.user.name;
+                    const actions = document.getElementById('role-actions');
+                    actions.innerHTML = `
+                        <div class="p-4 bg-blue-50 text-blue-800 rounded-xl text-sm mb-4 font-medium border border-blue-100">You have access to view your attendance history.</div>
+                        <a href="/dashboard" class="block w-full py-3.5 btn-gradient-blue text-white rounded-xl font-bold hover:shadow-lg shadow-blue-500/30 text-center transition-all transform hover:-translate-y-0.5">
+                            <i data-lucide="layout-dashboard" class="w-4 h-4 inline mr-2"></i>Go to My Dashboard
+                        </a>
+                    `;
+                    showView('success');
+                } else {
+                    showMessage(role === 'student' ? 'msg-student-login' : 'msg-teacher-login', result.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showMessage(role === 'student' ? 'msg-student-login' : 'msg-teacher-login', 'Server Connection Error', 'error');
+            }
+        }
+
+        async function handleSuperAdminLogin(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const res = await fetch('/api/super_admin/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    window.location.href = '/access_manager';
+                } else {
+                    showMessage('msg-super-admin', result.message, 'error');
+                }
+            } catch (err) {
+                showMessage('msg-super-admin', 'Connection Error', 'error');
+            }
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', {method: 'POST'});
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

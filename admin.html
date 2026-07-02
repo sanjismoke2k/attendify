@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control Panel - Attendify</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #e0eafc;
+            overflow-x: hidden;
+        }
+        h1, h2, h3 { font-family: 'Poppins', sans-serif; }
+
+        /* --- Background Animation (Matches Login) --- */
+        .background-container { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; 
+            background: linear-gradient(-45deg, #e0eafc, #cfdef3, #e6dada, #f0e1e1); 
+            background-size: 400% 400%; 
+            animation: gradientBG 15s ease infinite; 
+        }
+        @keyframes gradientBG { 
+            0% { background-position: 0% 50%; } 
+            50% { background-position: 100% 50%; } 
+            100% { background-position: 0% 50%; } 
+        }
+        .shapes span { 
+            position: absolute; bottom: -150px; background-color: rgba(255, 255, 255, 0.1); 
+            border-radius: 50%; animation: floatUp 25s linear infinite; 
+        }
+        .shapes span:nth-child(1) { width: 80px; height: 80px; left: 25%; }
+        .shapes span:nth-child(2) { width: 50px; height: 50px; left: 70%; }
+        @keyframes floatUp { to { transform: translateY(-120vh) rotate(720deg); opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        
+        /* --- Enhanced Glass Card --- */
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.35); 
+            backdrop-filter: blur(40px); 
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+            box-shadow: 0 20px 50px 0 rgba(31, 38, 135, 0.15); 
+        }
+
+        .glass-input { 
+            background: rgba(255, 255, 255, 0.6); 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            backdrop-filter: blur(10px); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-input:focus { 
+            background: rgba(255, 255, 255, 0.9); 
+            border-color: #007aff; 
+            outline: none; 
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15); 
+        }
+
+        /* --- Toast Notification --- */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%) translateY(150%);
+            padding: 12px 24px; border-radius: 12px;
+            font-weight: 600; font-size: 0.9rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            z-index: 100; display: flex; items-center; gap: 8px;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background-color: rgba(220, 252, 231, 0.9); color: #166534; border: 1px solid #86efac; }
+        .toast.error { background-color: rgba(254, 226, 226, 0.9); color: #991b1b; border: 1px solid #fca5a5; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #007aff 0%, #0062cc 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -10px rgba(0, 122, 255, 0.4); }
+        
+        .btn-secondary {
+            background: white; color: #475569; border: 1px solid rgba(255,255,255,0.6);
+        }
+        .btn-secondary:hover { background: #f8fafc; color: #1e293b; }
+    </style>
+</head>
+<body class="antialiased text-slate-800">
+    <div class="background-container"><div class="shapes"><span></span><span></span></div></div>
+    
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl fade-in">
+        
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+            <div class="text-center sm:text-left">
+                <h1 class="text-3xl font-bold text-slate-800">System Controller</h1>
+                <p class="text-slate-500 font-medium text-sm">Configure AI Model & Camera</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/" class="btn-secondary py-2.5 px-5 rounded-xl flex items-center gap-2 font-bold text-sm shadow-sm backdrop-blur-md transition-all">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back Home
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Settings Card -->
+        <div class="glass-card rounded-[2rem] p-8 sm:p-10 space-y-8">
+            <div id="settingsForm" class="space-y-8">
+                
+                <!-- Section: AI Engine -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 text-slate-800 font-bold text-lg border-b border-slate-200/50 pb-2">
+                        <i data-lucide="cpu" class="w-5 h-5 text-blue-600"></i>
+                        AI Engine Configuration
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Recognition Framework</label>
+                            <div class="relative">
+                                <select id="recognitionFramework" name="RECOGNITION_FRAMEWORK" class="glass-input w-full p-3.5 rounded-xl font-medium text-slate-700 appearance-none cursor-pointer">
+                                    <option value="DeepFace">DeepFace (High Accuracy)</option>
+                                    <option value="OpenCV">OpenCV LBPH (Lightweight)</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="absolute right-4 top-4 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- DeepFace Options -->
+                        <div id="deepfaceSettings" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Model Architecture</label>
+                                <div class="relative">
+                                    <select id="deepfaceModel" name="DEEPFACE_MODEL" class="glass-input w-full p-3.5 rounded-xl font-medium text-slate-700 appearance-none cursor-pointer">
+                                        <option>VGG-Face</option><option>Facenet</option><option>Facenet512</option><option>OpenFace</option><option>DeepFace</option><option>DeepID</option><option selected>ArcFace</option><option>Dlib</option><option>SFace</option>
+                                    </select>
+                                    <i data-lucide="chevron-down" class="absolute right-4 top-4 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Distance Threshold</label>
+                                <input type="number" step="0.01" id="deepfaceThreshold" value="0.68" class="glass-input w-full p-3.5 rounded-xl font-medium text-slate-700" placeholder="0.4 - 1.0">
+                                <p class="text-[11px] text-slate-400 mt-1 ml-1">Lower = Stricter match. Recommended: 0.68 for ArcFace.</p>
+                            </div>
+                        </div>
+
+                        <!-- OpenCV Options -->
+                        <div id="opencvSettings" class="space-y-4" style="display: none;">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Confidence Threshold</label>
+                                <input type="number" id="opencvThreshold" value="70" class="glass-input w-full p-3.5 rounded-xl font-medium text-slate-700">
+                                <p class="text-[11px] text-slate-400 mt-1 ml-1">Recommended: 70. Lower is stricter.</p>
+                            </div>
+                            <button id="trainOpenCVButton" class="w-full bg-amber-100 text-amber-700 font-bold py-3.5 rounded-xl hover:bg-amber-200 transition-all flex items-center justify-center gap-2 border border-amber-200">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Retrain Model
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Camera & Attendance -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 text-slate-800 font-bold text-lg border-b border-slate-200/50 pb-2">
+                        <i data-lucide="camera" class="w-5 h-5 text-green-600"></i>
+                        Camera & Attendance Rules
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Video Source</label>
+                            <div class="relative">
+                                <select id="cameraSource" name="CAMERA_SOURCE" class="glass-input w-full p-3.5 rounded-xl font-medium text-slate-700 appearance-none cursor-pointer">
+                                    <option value="local_server">Local Webcam (Server)</option>
+                                    <option value="remote_stream">Remote Device (Phone/IP)</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="absolute right-4 top-4 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                            </div>
+                            <div id="remoteCameraLinkContainer" class="mt-3" style="display: none;">
+                                <a href="/remote_camera" target="_blank" class="block w-full text-center py-2.5 rounded-lg bg-indigo-50 text-indigo-600 font-bold text-xs hover:bg-indigo-100 transition-colors border border-indigo-100">
+                                    Open Remote Camera URL <i data-lucide="external-link" class="w-3 h-3 inline ml-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">Min. Presence (Minutes)</label>
+                            <input type="number" step="0.1" id="minPresence" value="0.1" class="glass-input w-full p-3.5 rounded-xl font-medium text-slate-700">
+                            <p class="text-[11px] text-slate-400 mt-1 ml-1">Time required in front of camera to be marked "Present".</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="pt-6 border-t border-slate-200/50">
+                <button id="saveButton" class="w-full btn-primary text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 text-lg">
+                    <i data-lucide="save" class="w-5 h-5"></i> Save System Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toastContainer"></div>
+
+<script>
+    const frameworkSelect = document.getElementById('recognitionFramework');
+    const cameraSourceSelect = document.getElementById('cameraSource');
+    const remoteCameraLinkContainer = document.getElementById('remoteCameraLinkContainer');
+    const deepfaceSettings = document.getElementById('deepfaceSettings');
+    const opencvSettings = document.getElementById('opencvSettings');
+    const saveButton = document.getElementById('saveButton');
+    const trainButton = document.getElementById('trainOpenCVButton');
+
+    function toggleFrameworkSettingsView() {
+        if (frameworkSelect.value === 'DeepFace') {
+            deepfaceSettings.style.display = 'block';
+            opencvSettings.style.display = 'none';
+        } else {
+            deepfaceSettings.style.display = 'none';
+            opencvSettings.style.display = 'block';
+        }
+    }
+
+    function toggleRemoteCameraLink() {
+        remoteCameraLinkContainer.style.display = cameraSourceSelect.value === 'remote_stream' ? 'block' : 'none';
+    }
+
+    async function loadSettings() {
+        try {
+            const response = await fetch('/api/settings');
+            const data = await response.json();
+            if (data.success) {
+                const settings = data.settings;
+                document.getElementById('recognitionFramework').value = settings.RECOGNITION_FRAMEWORK || 'DeepFace';
+                document.getElementById('cameraSource').value = settings.CAMERA_SOURCE || 'local_server';
+                document.getElementById('deepfaceModel').value = settings.DEEPFACE_MODEL || 'ArcFace';
+                document.getElementById('deepfaceThreshold').value = settings.DEEPFACE_DISTANCE_THRESHOLD || 0.68;
+                document.getElementById('opencvThreshold').value = settings.OPENCV_CONF_THRESHOLD || 70;
+                document.getElementById('minPresence').value = settings.MIN_PRESENCE_MINUTES || 0.1;
+                toggleFrameworkSettingsView();
+                toggleRemoteCameraLink();
+            } else { showToast('Failed to load settings.', 'error'); }
+        } catch (error) { showToast('Error connecting to server.', 'error'); }
+    }
+
+    async function saveSettings() {
+        const settings = {
+            RECOGNITION_FRAMEWORK: document.getElementById('recognitionFramework').value,
+            CAMERA_SOURCE: document.getElementById('cameraSource').value,
+            DEEPFACE_MODEL: document.getElementById('deepfaceModel').value,
+            DEEPFACE_DISTANCE_THRESHOLD: parseFloat(document.getElementById('deepfaceThreshold').value),
+            OPENCV_CONF_THRESHOLD: parseInt(document.getElementById('opencvThreshold').value, 10),
+            MIN_PRESENCE_MINUTES: parseFloat(document.getElementById('minPresence').value)
+        };
+        try {
+            saveButton.disabled = true; 
+            const originalText = saveButton.innerHTML;
+            saveButton.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Saving...`; lucide.createIcons();
+            
+            const response = await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(settings)
+            });
+            const data = await response.json();
+            showToast(data.message || 'Settings saved successfully!', data.success ? 'success' : 'error');
+            
+            setTimeout(() => {
+                saveButton.disabled = false; 
+                saveButton.innerHTML = originalText;
+                lucide.createIcons();
+            }, 500);
+        } catch (error) {
+            showToast('Error connecting to server.', 'error');
+            saveButton.disabled = false;
+        }
+    }
+
+    async function trainOpenCVModel() {
+         try {
+            trainButton.disabled = true; 
+            const originalText = trainButton.innerHTML;
+            trainButton.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Training...`; lucide.createIcons();
+            
+            const response = await fetch('/api/train_opencv', { method: 'POST' });
+            const data = await response.json();
+            showToast(data.message || 'Training started!', data.success ? 'success' : 'error');
+        } catch (error) {
+            showToast('Error connecting to server.', 'error');
+        } finally {
+            trainButton.disabled = false; 
+            trainButton.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4"></i> Retrain Model`; lucide.createIcons();
+        }
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = type === 'success' 
+            ? `<i data-lucide="check-circle" class="w-5 h-5"></i> ${message}` 
+            : `<i data-lucide="alert-circle" class="w-5 h-5"></i> ${message}`;
+        document.getElementById('toastContainer').appendChild(toast);
+        lucide.createIcons();
+        
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    }
+
+    frameworkSelect.addEventListener('change', toggleFrameworkSettingsView);
+    cameraSourceSelect.addEventListener('change', toggleRemoteCameraLink);
+    saveButton.addEventListener('click', saveSettings);
+    trainButton.addEventListener('click', trainOpenCVModel);
+    
+    lucide.createIcons();
+    loadSettings();
+</script>
+</body>
+</html>

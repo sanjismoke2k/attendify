@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Attendify</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc; 
+            color: #1e293b;
+            overflow-x: hidden; 
+        }
+        h1, h2, h3, h4, .font-display { font-family: 'Outfit', sans-serif; }
+        
+        /* --- Background Animation --- */
+        .background-container { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; 
+            background: linear-gradient(-45deg, #e0eafc, #cfdef3, #e6dada, #f0e1e1); 
+            background-size: 400% 400%; 
+            animation: gradientBG 15s ease infinite; 
+        }
+        @keyframes gradientBG { 
+            0% { background-position: 0% 50%; } 
+            50% { background-position: 100% 50%; } 
+            100% { background-position: 0% 50%; } 
+        }
+        .shapes span { 
+            position: absolute; bottom: -150px; background-color: rgba(255, 255, 255, 0.1); 
+            border-radius: 50%; animation: floatUp 25s linear infinite; 
+        }
+        .shapes span:nth-child(1) { width: 80px; height: 80px; left: 25%; }
+        .shapes span:nth-child(2) { width: 50px; height: 50px; left: 70%; }
+        @keyframes floatUp { to { transform: translateY(-120vh) rotate(720deg); opacity: 0; } }
+
+        /* --- Premium Glass Card --- */
+        .pro-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.05);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; overflow: hidden;
+        }
+        .pro-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 30px 60px -15px rgba(59, 130, 246, 0.15);
+            background: rgba(255, 255, 255, 0.85);
+            border-color: #3b82f6;
+        }
+
+        /* --- Workflow Pipeline Animation --- */
+        .pipeline-container {
+            position: relative;
+            padding-left: 1rem; /* Tightened for mobile */
+            border-left: 3px solid rgba(203, 213, 225, 0.4);
+            margin-left: 0.25rem;
+        }
+        @media (min-width: 768px) {
+            .pipeline-container {
+                padding-left: 3rem;
+                margin-left: 1.5rem;
+            }
+        }
+        /* Animated line flowing down */
+        .pipeline-container::before {
+            content: ''; position: absolute; top: 0; bottom: 0; left: -3px; width: 3px;
+            background: linear-gradient(to bottom, #3b82f6, #a855f7);
+            z-index: 1; height: 0%;
+            animation: flowLine 4s ease-in-out infinite;
+        }
+        @keyframes flowLine { 0% { height: 0%; top: 0; } 50% { height: 100%; top: 0; } 100% { height: 0%; top: 100%; } }
+
+        .step-dot {
+            position: absolute; left: -11px; top: 0; width: 19px; height: 19px;
+            background: #f8fafc; border: 4px solid #cbd5e1; border-radius: 50%;
+            z-index: 2; transition: all 0.3s ease;
+        }
+        .pro-card:hover + .step-dot, .pro-card:hover .step-dot {
+            border-color: #3b82f6; background: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+        }
+
+        /* --- Scroll Reveal --- */
+        .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s ease-out; }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+        .delay-100 { transition-delay: 0.1s; } .delay-200 { transition-delay: 0.2s; }
+        .delay-300 { transition-delay: 0.3s; } .delay-400 { transition-delay: 0.4s; }
+        .delay-500 { transition-delay: 0.5s; }
+
+        /* --- Button Styles --- */
+        .btn-gradient-blue {
+            background: linear-gradient(135deg, #007aff 0%, #0062cc 100%);
+            color: white; border-radius: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px -5px rgba(0, 122, 255, 0.3);
+        }
+        .btn-gradient-blue:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px -5px rgba(0, 122, 255, 0.4);
+        }
+
+        /* --- Pulse Animation for Icons --- */
+        .icon-pulse { position: relative; }
+        .icon-pulse::after {
+            content: ''; position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px;
+            border-radius: 50%; border: 2px solid currentColor; opacity: 0;
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+
+        /* --- Animated Logo Styles --- */
+        :root { --logo-primary-color: #007aff; --logo-animation-speed: 3.5s; }
+        .logo-container { width: 70px; height: 70px; position: relative; display: flex; justify-content: center; align-items: center; margin: auto; margin-bottom: 1rem; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); }
+        .face-icon { width: 40px; height: 40px; position: relative; color: var(--logo-primary-color); }
+        .eye { width: 5px; height: 5px; background-color: var(--logo-primary-color); border-radius: 50%; position: absolute; top: 12px; }
+        .eye.left { left: 10px; } .eye.right { right: 10px; }
+        .smile { width: 16px; height: 8px; border: 3px solid transparent; border-bottom: 3px solid var(--logo-primary-color); border-radius: 0 0 16px 16px; position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%); animation: smile-animate var(--logo-animation-speed) ease-in-out infinite alternate; animation-delay: 0.25s; }
+        .corner { width: 12px; height: 12px; position: absolute; border-style: solid; border-color: var(--logo-primary-color); border-width: 3px; animation: pop-in-out var(--logo-animation-speed) ease-in-out infinite alternate; }
+        .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-radius: 8px 0 0 0; }
+        .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-radius: 0 8px 0 0; animation-delay: 0.5s; }
+        .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-radius: 0 0 0 8px; animation-delay: 0.5s; }
+        .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-radius: 0 0 8px 0; }
+        .scan-bar { position: absolute; left: 0; top: 0; width: 100%; height: 2px; background: linear-gradient(to right, transparent 0%, rgba(0, 122, 255, 0.1) 20%, rgba(0, 122, 255, 0.9) 50%, rgba(0, 122, 255, 0.1) 80%, transparent 100%); opacity: 0; animation: professional-scan var(--logo-animation-speed) ease-in-out infinite alternate; }
+        @keyframes smile-animate { from { transform: translateX(-50%) scaleX(1); } to { transform: translateX(-50%) scaleX(0.75); } }
+        @keyframes pop-in-out { from { transform: scale(1); } to { transform: scale(0.92); } }
+        @keyframes professional-scan { 0% { transform: translateY(6px); opacity: 0; } 10% { transform: translateY(6px); opacity: 1; } 90% { transform: translateY(32px); opacity: 1; } 100% { transform: translateY(32px); opacity: 0; } }
+
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Background Elements -->
+    <div class="background-container"><div class="shapes"><span></span><span></span></div></div>
+
+    <!-- Hero Section -->
+    <header class="pt-12 md:pt-24 pb-8 md:pb-16 px-4 text-center"> <!-- Significantly reduced top padding -->
+        <div class="container mx-auto max-w-4xl reveal active">
+            
+            <!-- Animated Logo -->
+            <div class="logo-container transform hover:scale-105 transition-transform duration-500 mb-6 mx-auto">
+                <div class="face-icon">
+                    <div class="corner top-left"></div><div class="corner top-right"></div>
+                    <div class="corner bottom-left"></div><div class="corner bottom-right"></div>
+                    <div class="eye left"></div><div class="eye right"></div>
+                    <div class="smile"></div><div class="scan-bar"></div>
+                </div>
+            </div>
+
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/70 border border-white/60 text-slate-600 text-[10px] md:text-xs font-bold uppercase tracking-widest shadow-sm mb-6 backdrop-blur-sm">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+                </span>
+                Automated Classroom Management
+            </div>
+            
+            <!-- Optimized for mobile text sizing -->
+            <h1 class="text-4xl md:text-8xl font-extrabold text-slate-900 mb-4 leading-tight tracking-tight">
+                Attendify
+            </h1>
+            
+            <p class="text-sm md:text-xl text-slate-600 max-w-2xl mx-auto mb-8 leading-relaxed px-2 font-medium">
+                Attendify is an advanced, touchless attendance solution that replaces outdated manual tracking. By leveraging secure IP camera streams and high-precision neural networks, we ensure accurate, real-time presence logging without disrupting the flow of learning.
+            </p>
+
+            <div class="flex justify-center gap-4">
+                <a href="/login" class="btn-gradient-blue px-8 py-4 font-bold text-base md:text-lg flex items-center gap-2 shadow-lg shadow-blue-500/30">
+                    Access Portal <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Architecture Visualizer -->
+    <section class="py-8 md:py-16 px-4">
+        <div class="container mx-auto max-w-5xl">
+            
+            <div class="text-center mb-10 md:mb-16 reveal">
+                <h2 class="text-2xl md:text-4xl font-extrabold text-slate-900 mb-3">System Workflow</h2>
+                <div class="h-1.5 w-24 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
+                <p class="text-slate-500 mt-4 text-xs md:text-base font-medium">How we transform video into valuable data.</p>
+            </div>
+
+            <!-- Vertical Timeline / Pipeline -->
+            <div class="pipeline-container space-y-8 md:space-y-12">
+
+                <!-- Step 1: Input -->
+                <div class="relative pl-4 md:pl-8 reveal delay-100">
+                    <div class="step-dot top-6 md:top-10"></div>
+                    <div class="pro-card p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left">
+                        <div class="w-16 h-16 md:w-24 md:h-24 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600 shrink-0 icon-pulse border border-blue-100 shadow-inner">
+                            <i data-lucide="video" class="w-8 h-8 md:w-12 md:h-12"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Phase 01</div>
+                            <h3 class="text-xl md:text-3xl font-bold text-slate-800 mb-2 md:mb-3">IP Video Acquisition</h3>
+                            <p class="text-slate-600 text-sm md:text-base leading-relaxed">
+                                The system connects directly to high-definition IP cameras installed in the classroom. It continuously streams live video via RTSP, ensuring that every moment is captured in real-time without the need for manual interaction.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Transmission -->
+                <div class="relative pl-4 md:pl-8 reveal delay-200">
+                    <div class="step-dot top-6 md:top-10"></div>
+                    <div class="pro-card p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left">
+                        <div class="w-16 h-16 md:w-24 md:h-24 bg-indigo-50 rounded-3xl flex items-center justify-center text-indigo-600 shrink-0 icon-pulse border border-indigo-100 shadow-inner">
+                            <i data-lucide="server" class="w-8 h-8 md:w-12 md:h-12"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Phase 02</div>
+                            <h3 class="text-xl md:text-3xl font-bold text-slate-800 mb-2 md:mb-3">Secure Ingestion</h3>
+                            <p class="text-slate-600 text-sm md:text-base leading-relaxed">
+                                This video feed is securely transmitted to our central server. The backend acts as the intelligent hub, processing the incoming stream frame-by-frame to prepare the visual data for high-speed analysis.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Face Detection -->
+                <div class="relative pl-4 md:pl-8 reveal delay-300">
+                    <div class="step-dot top-6 md:top-10"></div>
+                    <div class="pro-card p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left">
+                        <div class="w-16 h-16 md:w-24 md:h-24 bg-purple-50 rounded-3xl flex items-center justify-center text-purple-600 shrink-0 icon-pulse border border-purple-100 shadow-inner">
+                            <i data-lucide="scan" class="w-8 h-8 md:w-12 md:h-12"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">Phase 03</div>
+                            <h3 class="text-xl md:text-3xl font-bold text-slate-800 mb-2 md:mb-3">RetinaFace Detection</h3>
+                            <p class="text-slate-600 text-sm md:text-base leading-relaxed">
+                                We utilize the advanced <strong>RetinaFace</strong> algorithm to scan every frame. It locates human faces with extreme precision, creating a bounding box around each student and ignoring background noise to focus solely on individuals.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Recognition -->
+                <div class="relative pl-4 md:pl-8 reveal delay-400">
+                    <div class="step-dot top-6 md:top-10"></div>
+                    <div class="pro-card p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left">
+                        <div class="w-16 h-16 md:w-24 md:h-24 bg-pink-50 rounded-3xl flex items-center justify-center text-pink-600 shrink-0 icon-pulse border border-pink-100 shadow-inner">
+                            <i data-lucide="fingerprint" class="w-8 h-8 md:w-12 md:h-12"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-pink-600 uppercase tracking-wider mb-2">Phase 04</div>
+                            <h3 class="text-xl md:text-3xl font-bold text-slate-800 mb-2 md:mb-3">ArcFace Recognition</h3>
+                            <p class="text-slate-600 text-sm md:text-base leading-relaxed">
+                                Detected faces are processed by the <strong>ArcFace</strong> neural network. This powerful model maps unique facial features into a digital signature (vector embedding), which is then instantly compared against the enrolled student database for a verified match.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Engagement -->
+                <div class="relative pl-4 md:pl-8 reveal delay-500">
+                    <div class="step-dot top-6 md:top-10"></div>
+                    <div class="pro-card p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left">
+                        <div class="w-16 h-16 md:w-24 md:h-24 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-600 shrink-0 icon-pulse border border-orange-100 shadow-inner">
+                            <i data-lucide="clock" class="w-8 h-8 md:w-12 md:h-12"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2">Phase 05</div>
+                            <h3 class="text-xl md:text-3xl font-bold text-slate-800 mb-2 md:mb-3">Engagement Monitoring</h3>
+                            <p class="text-slate-600 text-sm md:text-base leading-relaxed">
+                                Beyond just "present or absent," the system tracks the duration each student remains in the camera's view. This data measures actual classroom engagement time and can be visualized in graphical reports to understand attendance quality.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Attendance -->
+                <div class="relative pl-4 md:pl-8 reveal delay-500">
+                    <div class="step-dot top-6 md:top-10"></div>
+                    <div class="pro-card p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left bg-green-50/40 border-green-200">
+                        <div class="w-16 h-16 md:w-24 md:h-24 bg-green-100 rounded-3xl flex items-center justify-center text-green-600 shrink-0 icon-pulse border border-green-200 shadow-inner">
+                            <i data-lucide="check-circle-2" class="w-8 h-8 md:w-12 md:h-12"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-xs font-bold text-green-600 uppercase tracking-wider mb-2">Phase 06</div>
+                            <h3 class="text-xl md:text-3xl font-bold text-slate-800 mb-2 md:mb-3">Final Logging</h3>
+                            <p class="text-slate-600 text-sm md:text-base leading-relaxed">
+                                Once identity and engagement thresholds are met, the student is officially marked 'Present' in the system logs. Administrators can view these records instantly on the dashboard, ensuring a complete and accurate attendance history.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-16 bg-white/60 backdrop-blur-md border-t border-slate-200/60 mt-12">
+        <div class="container mx-auto text-center px-4">
+            <!-- Brand Mark -->
+            <div class="w-16 h-1.5 bg-gradient-to-r from-blue-400 to-purple-400 mx-auto rounded-full mb-8"></div>
+            
+            <div class="max-w-3xl mx-auto">
+                <p class="text-xs font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-6">Developed By Team Code Reapers</p>
+                <div class="flex flex-wrap justify-center gap-x-8 gap-y-4">
+                    <!-- Edit Names Here -->
+                    <span class="text-slate-700 font-bold text-sm px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100">Rahul Soni</span>
+                    <span class="text-slate-700 font-bold text-sm px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100">Raj Lakhera</span>
+                    <span class="text-slate-700 font-bold text-sm px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100">Patel Akash</span>
+                    <span class="text-slate-700 font-bold text-sm px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100">Navneet Patel</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        // Scroll Reveal Observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    </script>
+</body>
+</html>

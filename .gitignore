@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+
+# OpenCV generated files
+recognizer.yml
+labels.csv
+
+# Runtime data
+attendance.csv
+config.json
+users.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Old backup files

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Camera</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #e5e7eb; }
+        /* Make video fill the screen */
+        video {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+        .overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1.5rem;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent, rgba(0,0,0,0.6));
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <video id="localVideo" playsinline autoplay muted></video>
+
+    <div class="overlay">
+        <div class="flex justify-between items-center">
+            <h1 class="text-xl font-bold">Remote Camera</h1>
+            <div id="statusIndicator" class="px-3 py-1 text-sm font-semibold rounded-full bg-yellow-500 text-yellow-900 flex items-center gap-2">
+                <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                <span>CONNECTING</span>
+            </div>
+        </div>
+        
+        <div class="text-center">
+            <button id="streamButton" class="bg-blue-600 text-white font-bold py-4 px-8 rounded-full flex items-center gap-3 transition-all shadow-lg text-lg mx-auto disabled:opacity-50">
+                <i data-lucide="video" class="w-6 h-6"></i> 
+                <span id="buttonText">Start Streaming</span>
+            </button>
+        </div>
+    </div>
+
+<script>
+    const localVideo = document.getElementById('localVideo');
+    const streamButton = document.getElementById('streamButton');
+    const buttonText = document.getElementById('buttonText');
+    const statusIndicator = document.getElementById('statusIndicator');
+
+    let localStream;
+    let streamInterval;
+    let isStreaming = false;
+
+    async function setupCamera() {
+        try {
+            // Prefer the rear camera on mobile devices
+            const constraints = { video: { facingMode: { exact: "environment" } } };
+            localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            localVideo.srcObject = localStream;
+            streamButton.disabled = false;
+            updateStatus('READY', 'bg-gray-500', 'text-gray-900', 'wifi-off');
+        } catch (e) {
+            console.warn("Could not get rear camera, trying any camera:", e);
+            try {
+                // Fallback to any available camera
+                const fallbackConstraints = { video: true };
+                localStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                localVideo.srcObject = localStream;
+                streamButton.disabled = false;
+                updateStatus('READY', 'bg-gray-500', 'text-gray-900', 'wifi-off');
+            } catch (err) {
+                console.error("Error accessing any camera:", err);
+                updateStatus('NO CAMERA', 'bg-red-500', 'text-red-900', 'video-off');
+                buttonText.textContent = "Camera Error";
+            }
+        }
+    }
+
+    function sendFrameToServer() {
+        if (!localStream || localVideo.paused || localVideo.ended || !isStreaming) return;
+        const canvas = document.createElement('canvas');
+        // Reduce resolution for faster streaming
+        canvas.width = 640;
+        canvas.height = 480;
+        const context = canvas.getContext('2d');
+        context.drawImage(localVideo, 0, 0, canvas.width, canvas.height);
+        const dataURL = canvas.toDataURL('image/jpeg', 0.7); // Get base64 string with compression
+        
+        fetch('/upload_frame', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: dataURL })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status !== 'received') {
+                console.warn('Server status:', data.message);
+                // If server stops, we should stop streaming too
+                if(data.message.includes('not running')) {
+                    toggleStreaming();
+                }
+            }
+        })
+        .catch(err => {
+            // Handle server connection loss
+            console.error(err);
+            if(isStreaming) {
+                updateStatus('ERROR', 'bg-red-500', 'text-red-900', 'alert-triangle');
+            }
+        });
+    }
+
+    function toggleStreaming() {
+        isStreaming = !isStreaming;
+        if (isStreaming) {
+            streamInterval = setInterval(sendFrameToServer, 500); // Adjusted interval for performance
+            streamButton.classList.replace('bg-blue-600', 'bg-red-600');
+            buttonText.textContent = "Stop Streaming";
+            updateStatus('STREAMING', 'bg-green-500', 'text-green-900', 'wifi');
+        } else {
+            clearInterval(streamInterval);
+            streamButton.classList.replace('bg-red-600', 'bg-blue-600');
+            buttonText.textContent = "Start Streaming";
+            updateStatus('READY', 'bg-gray-500', 'text-gray-900', 'wifi-off');
+        }
+    }
+    
+    function updateStatus(text, bgColor, textColor, icon) {
+        statusIndicator.className = `px-3 py-1 text-sm font-semibold rounded-full ${bgColor} ${textColor} flex items-center gap-2`;
+        statusIndicator.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4"></i><span>${text}</span>`;
+        lucide.createIcons();
+    }
+
+    streamButton.addEventListener('click', toggleStreaming);
+    streamButton.disabled = true;
+
+    lucide.createIcons();
+    setupCamera();
+</script>
+</body>
+</html>

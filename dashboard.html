@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #e0eafc;
+            overflow-x: hidden;
+        }
+        .background-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: linear-gradient(-45deg, #e0eafc, #cfdef3, #e6dada, #f0e1e1);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .shapes span {
+            position: absolute; bottom: -150px; background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 50%; animation: floatUp 25s linear infinite;
+        }
+        @keyframes floatUp { to { transform: translateY(-120vh) rotate(720deg); opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+        .modal-glass-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="background-container"><div class="shapes"><span></span></div></div>
+
+    <a href="/" class="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 p-3 bg-white/40 backdrop-blur-lg rounded-full shadow-lg border border-white/30 text-slate-700 hover:bg-white/60 transition-transform transform hover:scale-110">
+        <i data-lucide="chevron-left" class="w-6 h-6"></i>
+    </a>
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl fade-in">
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 pt-16 sm:pt-0">
+            <div class="w-full sm:w-auto text-center sm:text-left">
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Attendance Dashboard</h1>
+            </div>
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <!-- [NEW] Notification Bell -->
+                <button onclick="toggleNotificationList()" class="relative p-3 bg-white/50 backdrop-blur-xl rounded-full text-slate-700 border border-white/30 hover:bg-white/80 transition-all shadow-sm">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span id="notificationDot" class="hidden absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                </button>
+                 <button onclick="downloadCSV()" class="flex-1 sm:flex-none bg-white/50 backdrop-blur-xl text-slate-700 font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 border border-white/30 hover:bg-white/80 transition-all shadow-sm">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    <span class="hidden sm:inline">Download CSV</span>
+                 </button>
+                 <button onclick="toggleStatistics()" class="flex-1 sm:flex-none bg-sky-500/80 backdrop-blur-xl text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 border border-white/30 hover:bg-sky-600/80 transition-all shadow-sm">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                    <span class="hidden sm:inline">View Statistics</span>
+                 </button>
+            </div>
+        </header>
+
+        <!-- Statistics Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- [MODIFIED] Total Students card is now a button -->
+            <button onclick="showStudentList()" class="glass-card p-5 rounded-2xl flex items-center gap-4 text-left w-full">
+                <div class="w-12 h-12 rounded-full bg-sky-100 text-sky-500 flex items-center justify-center flex-shrink-0"><i data-lucide="users" class="w-6 h-6"></i></div>
+                <div>
+                    <p class="text-sm text-slate-600">Total Students</p>
+                    <p id="totalStudentsStat" class="text-2xl font-bold text-slate-900">0</p>
+                </div>
+            </button>
+            <!-- [MODIFIED] Present Students card is now a button -->
+            <button onclick="showPresentList()" class="glass-card p-5 rounded-2xl flex items-center gap-4 text-left w-full">
+                <div class="w-12 h-12 rounded-full bg-green-100 text-green-500 flex items-center justify-center flex-shrink-0"><i data-lucide="user-check" class="w-6 h-6"></i></div>
+                <div>
+                    <p class="text-sm text-slate-600">Present</p>
+                    <p id="presentStudentsStat" class="text-2xl font-bold text-slate-900">0</p>
+                </div>
+            </button>
+            <!-- [MODIFIED] Absent Students card is now a button -->
+            <button onclick="showAbsentList()" class="glass-card p-5 rounded-2xl flex items-center gap-4 text-left w-full">
+                <div class="w-12 h-12 rounded-full bg-red-100 text-red-500 flex items-center justify-center flex-shrink-0"><i data-lucide="user-x" class="w-6 h-6"></i></div>
+                <div>
+                    <p class="text-sm text-slate-600">Absent</p>
+                    <p id="absentStudentsStat" class="text-2xl font-bold text-slate-900">0</p>
+                </div>
+            </button>
+            <div class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-violet-100 text-violet-500 flex items-center justify-center flex-shrink-0"><i data-lucide="pie-chart" class="w-6 h-6"></i></div>
+                <div>
+                    <p class="text-sm text-slate-600">Attendance Rate</p>
+                    <p id="attendanceRateStat" class="text-2xl font-bold text-slate-900">0%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- [NEW] Search Bar -->
+        <div class="mb-8 relative">
+            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name or roll number..." class="w-full pl-12 pr-4 py-3 glass-card rounded-lg text-slate-800 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400">
+            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"></i>
+        </div>
+
+        <!-- Main Table Container -->
+        <div class="glass-card rounded-3xl overflow-hidden">
+             <div class="overflow-x-auto">
+                <table id="attendanceTable" class="w-full text-sm text-left">
+                    <thead class="bg-slate-50/50 text-xs text-slate-700 uppercase tracking-wider">
+                        <tr>
+                            <th scope="col" class="px-6 py-4">Name</th>
+                            <th scope="col" class="px-6 py-4">Roll Number</th>
+                            <th scope="col" class="px-6 py-4">First Seen</th>
+                            <th scope="col" class="px-6 py-4">Last Seen</th>
+                            <th scope="col" class="px-6 py-4">Time on Camera</th>
+                            <th scope="col" class="px-6 py-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-body"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="statisticsContainer" class="mt-8 glass-card rounded-3xl p-4 sm:p-6" style="display: none;">
+            <div class="relative h-96">
+                <canvas id="engagementChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- [NEW] Student List Modal -->
+    <div id="studentListModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden fade-in">
+        <div class="modal-glass-card rounded-2xl p-6 w-full max-w-md m-4">
+             <h2 id="studentListTitle" class="text-xl font-bold text-slate-800 mb-4 text-center">All Enrolled Students</h2>
+             <div id="studentListContainer" class="max-h-80 overflow-y-auto bg-white/30 rounded-lg p-4 text-left space-y-2"></div>
+             <button onclick="closeStudentList()" class="mt-6 w-full bg-sky-500 text-white font-bold py-2 px-6 rounded-lg">Close</button>
+        </div>
+    </div>
+
+    <!-- [NEW] Notification List Modal -->
+    <div id="notificationModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden fade-in">
+        <div class="modal-glass-card rounded-2xl p-6 w-full max-w-md m-4">
+             <h2 class="text-xl font-bold text-slate-800 mb-4 text-center">Absent Student Alerts</h2>
+             <div id="notificationListContainer" class="max-h-80 overflow-y-auto bg-white/30 rounded-lg p-4 text-left space-y-2"></div>
+             <button onclick="toggleNotificationList()" class="mt-6 w-full bg-sky-500 text-white font-bold py-2 px-6 rounded-lg">Close</button>
+        </div>
+    </div>
+
+
+<script>
+    let latestAttendanceData = [];
+    let allStudentsData = [];
+    let engagementChartInstance;
+    let isStatisticsVisible = false;
+
+    async function loadDashboard() {
+        try {
+            const tbody = document.querySelector("#attendance-body");
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">Loading...</td></tr>`;
+            
+            const [dashboardRes, studentsRes] = await Promise.all([
+                fetch("/api/dashboard_data"),
+                fetch("/api/student_list")
+            ]);
+
+            const dashboardData = await dashboardRes.json();
+            allStudentsData = await studentsRes.json();
+            
+            latestAttendanceData = dashboardData.attendance;
+            const stats = dashboardData.stats;
+
+            document.getElementById('totalStudentsStat').textContent = stats.total_students;
+            document.getElementById('presentStudentsStat').textContent = stats.present;
+            document.getElementById('absentStudentsStat').textContent = stats.absent;
+            document.getElementById('attendanceRateStat').textContent = `${stats.attendance_rate}%`;
+
+            const notificationContainer = document.getElementById("notificationListContainer");
+            notificationContainer.innerHTML = "";
+            const absentStudents = latestAttendanceData.filter(s => s.Status === "absent");
+            
+            if (absentStudents.length > 0) {
+                document.getElementById('notificationDot').classList.remove('hidden');
+                absentStudents.forEach(student => {
+                    const alertItem = document.createElement("div");
+                    alertItem.className = "bg-red-100/70 border-l-4 border-red-500 text-red-800 p-3 rounded-md text-sm flex items-center gap-3";
+                    alertItem.innerHTML = `<i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0"></i> <strong>${student["Name"]}</strong> (Roll: ${student["Roll Number"]}) is absent.`;
+                    notificationContainer.appendChild(alertItem);
+                });
+            } else {
+                 document.getElementById('notificationDot').classList.add('hidden');
+                 notificationContainer.innerHTML = `<p class="text-slate-500 text-center p-4">No new alerts.</p>`;
+            }
+
+            filterTable();
+            if (isStatisticsVisible) renderEngagementChart(latestAttendanceData);
+
+        } catch (error) {
+            document.querySelector("#attendance-body").innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Error loading data. Server might be offline.</td></tr>`;
+        } finally {
+             lucide.createIcons();
+        }
+    }
+
+    function filterTable() {
+        const input = document.getElementById("searchInput");
+        const filter = input.value.toUpperCase();
+        const tbody = document.getElementById("attendance-body");
+        tbody.innerHTML = '';
+
+        const filteredData = latestAttendanceData.filter(row => {
+            const name = row["Name"].toUpperCase();
+            const roll = row["Roll Number"].toString().toUpperCase();
+            return name.includes(filter) || roll.includes(filter);
+        });
+
+        if (filteredData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No matching records found.</td></tr>`;
+            return;
+        }
+
+        filteredData.forEach(student => {
+            const isPresent = student["Status"] === "present";
+            const statusPill = `<span class="px-3 py-1 text-xs font-semibold rounded-full ${isPresent ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${student["Status"]}</span>`;
+            const tr = document.createElement("tr");
+            tr.className = "border-b border-white/30 hover:bg-white/20 transition-colors";
+            tr.innerHTML = `
+                <td class="px-6 py-3 font-medium text-slate-800">${student["Name"]}</td>
+                <td class="px-6 py-3 text-slate-600">${student["Roll Number"]}</td>
+                <td class="px-6 py-3 text-slate-600">${student["First Seen"]}</td>
+                <td class="px-6 py-3 text-slate-600">${student["Last Seen"]}</td>
+                <td class="px-6 py-3 text-slate-600">${student["Time on Camera"]}</td>
+                <td class="px-6 py-3">${statusPill}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    
+    function showStudentList() {
+        populateStudentListModal('All Enrolled Students', allStudentsData);
+    }
+
+    function showPresentList() {
+        const presentStudents = latestAttendanceData.filter(s => s.Status === 'present');
+        populateStudentListModal('Present Students', presentStudents);
+    }
+
+    function showAbsentList() {
+        const absentStudents = latestAttendanceData.filter(s => s.Status === 'absent');
+        populateStudentListModal('Absent Students', absentStudents);
+    }
+    
+    function populateStudentListModal(titleText, studentArray) {
+        const studentListContainer = document.getElementById('studentListContainer');
+        const title = document.getElementById('studentListTitle');
+        title.textContent = titleText;
+        studentListContainer.innerHTML = '';
+
+        if (studentArray.length === 0) {
+             studentListContainer.innerHTML = `<p class="text-slate-500 text-center p-4">No students in this category.</p>`;
+        } else {
+            studentArray.forEach(student => {
+                const studentItem = document.createElement('div');
+                studentItem.className = 'flex justify-between items-center';
+                studentItem.innerHTML = `
+                    <span class="font-semibold text-slate-700">${student.Name || student.name}</span>
+                    <span class="text-sm text-slate-500">Roll: ${student['Roll Number'] || student.roll}</span>
+                `;
+                studentListContainer.appendChild(studentItem);
+            });
+        }
+        document.getElementById('studentListModal').classList.remove('hidden');
+    }
+
+
+    function closeStudentList() {
+        document.getElementById('studentListModal').classList.add('hidden');
+    }
+
+    function toggleNotificationList() {
+        const modal = document.getElementById('notificationModal');
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            document.getElementById('notificationDot').classList.add('hidden');
+        } else {
+            modal.classList.add('hidden');
+        }
+    }
+
+    // Other functions remain unchanged
+    function toggleStatistics() {
+        isStatisticsVisible = !isStatisticsVisible;
+        const container = document.getElementById('statisticsContainer');
+        container.style.display = isStatisticsVisible ? 'block' : 'none';
+        if (isStatisticsVisible) renderEngagementChart(latestAttendanceData);
+    }
+    function parseTimeOnCamera(timeStr) {
+        if (!timeStr || typeof timeStr !== 'string') return 0;
+        let totalSeconds = 0;
+        const minutesMatch = timeStr.match(/(\d+)\s*m/);
+        const secondsMatch = timeStr.match(/(\d+)\s*s/);
+        if (minutesMatch) totalSeconds += parseInt(minutesMatch[1], 10) * 60;
+        if (secondsMatch) totalSeconds += parseInt(secondsMatch[1], 10);
+        return totalSeconds;
+    }
+    function renderEngagementChart(data) {
+        if (!data || data.length === 0) return;
+        const studentNames = data.map(s => s["Name"]);
+        const engagementSeconds = data.map(s => parseTimeOnCamera(s["Time on Camera"]));
+        const averageSeconds = engagementSeconds.length > 0 ? engagementSeconds.reduce((a,b)=>a+b,0) / engagementSeconds.length : 0;
+        const backgroundColors = engagementSeconds.map(s => s < averageSeconds*0.5 ? 'rgba(239, 68, 68, 0.7)' : (s > averageSeconds*1.2 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(59, 130, 246, 0.7)'));
+        const ctx = document.getElementById('engagementChart').getContext('2d');
+        if (engagementChartInstance) engagementChartInstance.destroy();
+        engagementChartInstance = new Chart(ctx, {type:'bar',data:{labels:studentNames,datasets:[{label:'Time on Camera (seconds)',data:engagementSeconds,backgroundColor:backgroundColors,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'Student Engagement Levels',font:{size:16,weight:'600'},color:'#334155',padding:{bottom:20}},tooltip:{callbacks:{label:ctx=>{const s=ctx.parsed.y;const m=Math.floor(s/60);const r=s%60;return m>0?`${m}m ${r}s`:`${r}s`}}}},scales:{y:{beginAtZero:true,title:{display:true,text:'Time on Camera (seconds)'}},x:{grid:{display:false}}}}});
+    }
+    function downloadCSV() {
+        if(latestAttendanceData.length === 0) {alert("No data to download."); return;}
+        const headers = ["Roll Number","Name","First Seen","Last Seen","Time on Camera","Status"];
+        const csvRows = [headers.join(",")];
+        latestAttendanceData.forEach(row => {
+            const values = headers.map(header => `"${(''+row[header]).replace(/"/g,'""')}"`);
+            csvRows.push(values.join(","));
+        });
+        const blob = new Blob([csvRows.join("\n")],{type:'text/csv;charset=utf-8;'});
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        const date = new Date().toISOString().split('T')[0];
+        link.setAttribute("href",url);
+        link.setAttribute("download",`attendance_report_${date}.csv`);
+        link.style.visibility='hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    lucide.createIcons();
+    loadDashboard();
+    setInterval(loadDashboard, 10000);
+</script>
+</body>
+</html>
+

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #e0eafc;
+        }
+        .background-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: linear-gradient(-45deg, #e0eafc, #cfdef3, #e6dada, #f0e1e1);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .shapes span {
+            position: absolute; bottom: -150px; background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 50%; animation: floatUp 25s linear infinite;
+        }
+        @keyframes floatUp { to { transform: translateY(-120vh) rotate(720deg); opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+        #toast {
+            transition: opacity 0.5s, bottom 0.5s;
+        }
+        #toast.show {
+            opacity: 1;
+            bottom: 2rem;
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-800">
+    <div class="background-container"><div class="shapes"><span></span></div></div>
+
+    <a href="/" class="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 p-3 bg-white/40 backdrop-blur-lg rounded-full shadow-lg border border-white/30 text-slate-700 hover:bg-white/60 transition-transform transform hover:scale-110">
+        <i data-lucide="chevron-left" class="w-6 h-6"></i>
+    </a>
+
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-4xl glass-card rounded-3xl p-4 sm:p-6 fade-in flex flex-col gap-4">
+            
+            <h1 class="text-2xl sm:text-3xl font-semibold text-slate-800 text-center">Camera Control Panel</h1>
+            
+            <div id="cameraPreview" class="relative w-full aspect-video bg-slate-900/80 rounded-2xl border border-white/20 shadow-inner overflow-hidden">
+                <div id="cameraPlaceholder" class="absolute inset-0 flex items-center justify-center flex-col text-center p-4">
+                    <i data-lucide="video-off" class="w-12 h-12 text-slate-500 mb-4"></i>
+                    <h3 class="text-xl font-bold text-slate-300">Camera is Offline</h3>
+                    <p class="text-slate-400">Press "Start Camera" to begin the feed.</p>
+                </div>
+                </div>
+
+
+            <div class="w-full max-w-md mx-auto">
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="startCameraButton" class="w-full bg-green-500/80 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 shadow-lg border border-white/30 flex items-center justify-center gap-2">
+                        <i data-lucide="play-circle" class="w-6 h-6"></i>
+                        Start Camera
+                    </button>
+                    <button id="stopCameraButton" class="hidden w-full bg-red-500/80 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 shadow-lg border border-white/30 flex items-center justify-center gap-2">
+                        <i data-lucide="stop-circle" class="w-6 h-6"></i>
+                        Stop Camera
+                    </button>
+                    <button id="restartCameraButton" class="hidden w-full bg-sky-500/80 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 shadow-lg border border-white/30 flex items-center justify-center gap-2">
+                        <i data-lucide="rotate-cw" class="w-6 h-6"></i>
+                        Restart Camera
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-0 left-1/2 -translate-x-1/2 p-3 sm:p-4 rounded-lg glass-card text-slate-800 shadow-xl opacity-0 pointer-events-none w-auto max-w-[90%]">
+        <div class="flex items-center gap-3 whitespace-nowrap">
+            <div id="toastIcon" class="w-8 h-8 rounded-full flex items-center justify-center border-2 border-white flex-shrink-0"></div>
+            <p id="toastMessage" class="font-semibold text-sm sm:text-base"></p>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        const startButton = document.getElementById('startCameraButton');
+        const stopButton = document.getElementById('stopCameraButton');
+        const restartButton = document.getElementById('restartCameraButton');
+        const cameraPreview = document.getElementById('cameraPreview');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const toast = document.getElementById('toast');
+        const toastIcon = document.getElementById('toastIcon');
+        const toastMessage = document.getElementById('toastMessage');
+
+        const notificationSynth = new Tone.Synth({
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+            volume: -12
+        }).toDestination();
+        
+        function showToast(message, type) {
+            toastMessage.textContent = message;
+            if (type === 'start') {
+                toastIcon.className = "w-8 h-8 rounded-full flex items-center justify-center border-2 border-white bg-green-100 text-green-600";
+                toastIcon.innerHTML = `<i data-lucide="camera" class="w-5 h-5"></i>`;
+                notificationSynth.triggerAttackRelease("C4", "8n");
+            } else if (type === 'stop') {
+                toastIcon.className = "w-8 h-8 rounded-full flex items-center justify-center border-2 border-white bg-red-100 text-red-600";
+                toastIcon.innerHTML = `<i data-lucide="camera-off" class="w-5 h-5"></i>`;
+                notificationSynth.triggerAttackRelease("C3", "8n");
+            }
+            lucide.createIcons();
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        async function handleStart() {
+            await Tone.start();
+            fetch('/trigger_start_camera');
+            showToast('Camera has started...', 'start');
+            startButton.classList.add('hidden');
+            restartButton.classList.add('hidden');
+            stopButton.classList.remove('hidden');
+
+            cameraPlaceholder.classList.add('hidden');
+            
+            const existingFeed = document.getElementById('cameraFeed');
+            if(existingFeed) existingFeed.remove();
+
+            const cameraFeed = document.createElement('img');
+            cameraFeed.id = 'cameraFeed';
+            
+            // [MODIFIED] Added timestamp to bust browser cache
+            cameraFeed.src = '/video_feed?t=' + new Date().getTime(); 
+            
+            cameraFeed.className = 'w-full h-full object-cover';
+            cameraPreview.appendChild(cameraFeed);
+        }
+
+        async function handleStop() {
+            await Tone.start();
+            fetch('/trigger_stop_camera');
+            showToast('Camera stopped.', 'stop');
+            stopButton.classList.add('hidden');
+            restartButton.classList.remove('hidden');
+
+            const cameraFeed = document.getElementById('cameraFeed');
+            if (cameraFeed) {
+                cameraFeed.remove();
+            }
+            cameraPlaceholder.classList.remove('hidden');
+        }
+
+        startButton.addEventListener('click', handleStart);
+        stopButton.addEventListener('click', handleStop);
+        restartButton.addEventListener('click', handleStart);
+
+    </script>
+</body>
+</html>

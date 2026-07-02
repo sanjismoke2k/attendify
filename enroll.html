@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enroll New Student</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #e0eafc;
+            overflow-x: hidden;
+        }
+        .background-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: linear-gradient(-45deg, #e0eafc, #cfdef3, #e6dada, #f0e1e1);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .shapes span {
+            position: absolute; bottom: -150px; background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 50%; animation: floatUp 25s linear infinite;
+        }
+        .shapes span:nth-child(1) { width: 80px; height: 80px; left: 25%; }
+        .shapes span:nth-child(2) { width: 50px; height: 50px; left: 70%; }
+        @keyframes floatUp { to { transform: translateY(-120vh) rotate(720deg); opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+        /* [MODIFIED] Re-introducing a more opaque and readable glass effect */
+        .modal-glass-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 1.5rem; /* 24px */
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+        .form-input {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+        #thumbs img.success { border: 3px solid #10b981; }
+    </style>
+</head>
+<body class="antialiased text-slate-800">
+    <div class="background-container"><div class="shapes"><span></span><span></span></div></div>
+
+    <a href="/" class="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 p-3 bg-white/40 backdrop-blur-lg rounded-full shadow-lg border border-white/30 text-slate-700 hover:bg-white/60 transition-transform transform hover:scale-110">
+        <i data-lucide="chevron-left" class="w-6 h-6"></i>
+    </a>
+
+    <div class="container mx-auto max-w-2xl p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
+        <div class="w-full glass-card rounded-3xl p-8 fade-in">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-white/50 backdrop-blur-xl rounded-2xl flex items-center justify-center shadow-lg border border-white/30 text-sky-600 mx-auto mb-4">
+                    <i data-lucide="user-plus" class="w-8 h-8"></i>
+                </div>
+                <h1 class="text-3xl font-bold">Enroll New Student</h1>
+                <p class="text-slate-600 mt-2">Capture 5 clear, forward-facing photos.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label for="name" class="block mb-2 font-semibold text-slate-700">Student Name</label>
+                    <input id="name" type="text" placeholder="e.g., Jane Doe" class="form-input w-full p-3 rounded-lg focus:ring-2 focus:ring-sky-400 focus:outline-none transition">
+                </div>
+                <div>
+                    <label for="roll" class="block mb-2 font-semibold text-slate-700">Roll Number</label>
+                    <input id="roll" type="text" placeholder="e.g., 102" class="form-input w-full p-3 rounded-lg focus:ring-2 focus:ring-sky-400 focus:outline-none transition">
+                </div>
+            </div>
+
+            <div class="relative mb-4">
+                <video id="video" autoplay muted playsinline class="w-full rounded-lg aspect-video bg-slate-900/20 border-2 border-white/50"></video>
+            </div>
+            
+            <div id="buttonContainer" class="text-center mb-4 h-14">
+                <button id="captureBtn" class="bg-sky-500/80 backdrop-blur-xl text-white font-bold py-3 px-8 rounded-lg text-lg transition-transform transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg border border-white/30">
+                    Capture (<span id="count">0</span>/5)
+                </button>
+                <button id="enrollBtn" class="bg-green-500/80 backdrop-blur-xl text-white font-bold py-3 px-8 rounded-lg text-lg transition-transform transform hover:scale-105 shadow-lg border border-white/30 hidden">
+                    Enroll Student
+                </button>
+            </div>
+
+            <div id="msg" class="text-center text-slate-600 font-semibold mb-4 h-6"></div>
+            
+            <div id="thumbs" class="mt-4 grid grid-cols-5 gap-4 min-h-[80px] bg-white/20 p-4 rounded-lg"></div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden fade-in">
+        <div class="modal-glass-card p-6 text-center w-full max-w-xs m-4">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
+                <i data-lucide="check" class="w-10 h-10 text-green-600"></i>
+            </div>
+            <h2 class="text-xl font-bold text-slate-800">Enrolled!</h2>
+            <div id="successMessage" class="my-4 space-y-1"></div>
+            <button id="enrollAnotherBtn" class="w-full bg-green-500 text-white font-bold py-2 px-6 rounded-lg transition-transform transform hover:scale-105">
+                Enroll Another
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const rollInput = document.getElementById('roll');
+        const nameInput = document.getElementById('name');
+        const captureBtn = document.getElementById('captureBtn');
+        const countSpan = document.getElementById('count');
+        const thumbs = document.getElementById('thumbs');
+        const msg = document.getElementById('msg');
+        const enrollBtn = document.getElementById('enrollBtn');
+        const successModal = document.getElementById('successModal');
+        const successMessage = document.getElementById('successMessage');
+        const enrollAnotherBtn = document.getElementById('enrollAnotherBtn');
+        
+        lucide.createIcons();
+        let capturedCount = 0;
+        const requiredImages = 5;
+
+        const successSynth = new Tone.Synth({
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 },
+            volume: -12
+        }).toDestination();
+
+        async function startCamera() {
+            try {
+                await Tone.start();
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                captureBtn.disabled = false;
+                msg.textContent = 'Ready to capture!';
+                msg.className = 'text-center text-green-600 font-semibold mb-4 h-6';
+            } catch(e) {
+                msg.textContent = "Error: Camera access denied.";
+                msg.className = 'text-center text-red-600 font-semibold mb-4 h-6';
+                captureBtn.disabled = true;
+            }
+        }
+        
+        async function captureAndUpload() {
+            const roll = rollInput.value.trim();
+            const name = nameInput.value.trim();
+
+            if (!roll || !name) {
+                msg.textContent = 'Please enter Roll Number and Name first.';
+                msg.className = 'text-center text-red-600 font-semibold mb-4 h-6';
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg'));
+
+            const fd = new FormData();
+            fd.append('roll', roll);
+            fd.append('name', name);
+            fd.append('photo', blob, `${roll}_${capturedCount}.jpg`);
+
+            try {
+                captureBtn.disabled = true;
+                msg.textContent = 'Uploading...';
+
+                const response = await fetch('/api/enroll', { method: 'POST', body: fd });
+                const result = await response.json();
+
+                if (result.success) {
+                    msg.textContent = `Image ${capturedCount + 1} saved!`;
+                    
+                    const url = URL.createObjectURL(blob);
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.className = 'w-full h-auto object-cover rounded-md aspect-video success';
+                    thumbs.appendChild(img);
+
+                    capturedCount++;
+                    countSpan.textContent = capturedCount;
+
+                    if (capturedCount >= requiredImages) {
+                        captureBtn.classList.add('hidden');
+                        enrollBtn.classList.remove('hidden');
+                        msg.textContent = 'All photos captured. Click to enroll.';
+                        msg.className = 'text-center text-blue-600 font-semibold mb-4 h-6';
+                        if (video.srcObject) {
+                            video.srcObject.getTracks().forEach(track => track.stop());
+                        }
+                    } else {
+                        captureBtn.disabled = false;
+                    }
+                } else {
+                    msg.textContent = result.error || 'Failed to save photo.';
+                    msg.className = 'text-center text-red-600 font-semibold mb-4 h-6';
+                    captureBtn.disabled = false;
+                }
+            } catch (err) {
+                 msg.textContent = 'Network error during upload.';
+                 msg.className = 'text-center text-red-600 font-semibold mb-4 h-6';
+                 captureBtn.disabled = false;
+            }
+        }
+        
+        function showSuccessPopup() {
+            const roll = rollInput.value.trim();
+            const name = nameInput.value.trim();
+            // [MODIFIED] Using innerHTML and a darker text color for the roll number
+            successMessage.innerHTML = `
+                <span class="block text-lg font-bold text-slate-800">${name}</span>
+                <span class="block text-sm text-slate-600">Roll No: ${roll}</span>
+            `;
+            successModal.classList.remove('hidden');
+            successSynth.triggerAttackRelease("C4", "8n");
+        }
+
+        function resetEnrollmentForm() {
+            successModal.classList.add('hidden');
+            rollInput.value = '';
+            nameInput.value = '';
+            thumbs.innerHTML = '';
+            capturedCount = 0;
+            countSpan.textContent = capturedCount;
+            enrollBtn.classList.add('hidden');
+            captureBtn.classList.remove('hidden');
+            
+            msg.textContent = 'Initializing camera...';
+            msg.className = 'text-center text-slate-600 font-semibold mb-4 h-6';
+            captureBtn.disabled = true;
+            
+            setTimeout(startCamera, 50);
+        }
+
+        // --- Initialization and Event Listeners ---
+        captureBtn.disabled = true;
+        captureBtn.onclick = captureAndUpload;
+        enrollBtn.onclick = showSuccessPopup;
+        enrollAnotherBtn.onclick = resetEnrollmentForm;
+        
+        startCamera();
+    </script>
+</body>
+</html>
+
