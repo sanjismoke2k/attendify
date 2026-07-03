@@ -82,14 +82,22 @@
         
         <!-- Controls -->
         <div class="w-full max-w-md mx-auto space-y-4">
-            <!-- Server URL Display -->
-            <div class="bg-gray-900/80 backdrop-blur-md rounded-xl p-4 border border-gray-700">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-xs text-gray-400 font-medium">SERVER</span>
-                    <span id="serverStatus" class="text-xs text-gray-500">checking...</span>
-                </div>
-                <div class="text-sm text-blue-400 font-mono truncate" id="serverUrlDisplay">
-                    <!-- Filled by JS -->
+            <!-- Connection Status -->
+            <div id="connectionPanel" class="bg-gray-900/80 backdrop-blur-md rounded-xl p-4 border border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span id="connDot" class="relative flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                        </span>
+                        <div>
+                            <div id="connLabel" class="text-sm font-semibold text-yellow-400">Checking...</div>
+                            <div id="connSub" class="text-[10px] text-gray-500">Verifying server connection</div>
+                        </div>
+                    </div>
+                    <div id="connIcon" class="text-yellow-400">
+                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                    </div>
                 </div>
             </div>
 
@@ -99,12 +107,6 @@
                     <span class="text-xs text-gray-400 font-medium">QUALITY SETTINGS</span>
                     <span id="resDisplay" class="text-xs text-blue-400 font-mono">480x360 @ 50%</span>
                 </div>
-                <!-- 
-                   Slider Logic:
-                   1: Very Fast (320x240) - Use this if network is terrible
-                   2: Balanced (480x360) - Recommended
-                   3: High Res (640x480) - Use only on WiFi
-                -->
                 <input type="range" id="qualitySlider" min="1" max="3" step="1" value="2" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
                 <div class="flex justify-between text-[10px] text-gray-500 mt-1">
                     <span>Fast</span>
@@ -113,9 +115,12 @@
                 </div>
             </div>
 
-            <!-- Main Button -->
-            <div class="text-center pb-4">
-                <button id="streamButton" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-8 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+            <!-- Camera Switch + Main Button Row -->
+            <div class="flex gap-3 pb-4">
+                <button id="switchCamBtn" class="bg-gray-700/80 hover:bg-gray-600 text-white font-bold py-4 px-5 rounded-2xl flex items-center justify-center transition-all shadow-xl border border-gray-600" title="Switch Camera">
+                    <i data-lucide="switch-camera" class="w-6 h-6"></i>
+                </button>
+                <button id="streamButton" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-8 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl text-lg disabled:opacity-50 disabled:cursor-not-allowed">
                     <i data-lucide="video" class="w-6 h-6"></i> 
                     <span id="buttonText">Start Stream</span>
                 </button>
@@ -133,8 +138,12 @@
     const fpsVal = document.getElementById('fpsVal');
     const qualitySlider = document.getElementById('qualitySlider');
     const resDisplay = document.getElementById('resDisplay');
-    const serverUrlDisplay = document.getElementById('serverUrlDisplay');
-    const serverStatus = document.getElementById('serverStatus');
+    const switchCamBtn = document.getElementById('switchCamBtn');
+    const connDot = document.getElementById('connDot');
+    const connLabel = document.getElementById('connLabel');
+    const connSub = document.getElementById('connSub');
+    const connIcon = document.getElementById('connIcon');
+    const connectionPanel = document.getElementById('connectionPanel');
     const errorBanner = document.getElementById('errorBanner');
     const errorTitle = document.getElementById('errorTitle');
     const errorMessage = document.getElementById('errorMessage');
@@ -146,6 +155,9 @@
     let fpsTimer = null;
     let consecutiveErrors = 0;
     const MAX_CONSECUTIVE_ERRORS = 10;
+
+    // Camera facing mode: 'environment' = back, 'user' = front
+    let currentFacingMode = 'environment';
 
     // Auto-detect the server URL from the page origin
     const SERVER_URL = window.location.origin;
@@ -165,14 +177,53 @@
     const FRAME_INTERVAL = 1000 / TARGET_FPS; // ms between frames
     let lastFrameTime = 0;
 
-    // Display the server URL
-    serverUrlDisplay.textContent = SERVER_URL;
-
     // Update config when slider changes
     qualitySlider.addEventListener('input', (e) => {
         currentConfig = presets[e.target.value];
         resDisplay.textContent = currentConfig.label;
     });
+
+    // --- Connection Status Helpers ---
+    function setConnectionStatus(state) {
+        // state: 'checking', 'connected', 'live', 'disconnected'
+        const dotInner = connDot.querySelector('.relative');
+        const dotPing = connDot.querySelector('.animate-ping');
+
+        if (state === 'checking') {
+            dotInner.className = 'relative inline-flex rounded-full h-3 w-3 bg-yellow-500';
+            dotPing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75';
+            connLabel.textContent = 'Checking...';
+            connLabel.className = 'text-sm font-semibold text-yellow-400';
+            connSub.textContent = 'Verifying server connection';
+            connIcon.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin text-yellow-400"></i>';
+            connectionPanel.className = 'bg-gray-900/80 backdrop-blur-md rounded-xl p-4 border border-gray-700';
+        } else if (state === 'connected') {
+            dotInner.className = 'relative inline-flex rounded-full h-3 w-3 bg-green-500';
+            dotPing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75';
+            connLabel.textContent = 'Connected';
+            connLabel.className = 'text-sm font-semibold text-green-400';
+            connSub.textContent = 'Server is online — ready to stream';
+            connIcon.innerHTML = '<i data-lucide="wifi" class="w-5 h-5 text-green-400"></i>';
+            connectionPanel.className = 'bg-gray-900/80 backdrop-blur-md rounded-xl p-4 border border-green-800/50';
+        } else if (state === 'live') {
+            dotInner.className = 'relative inline-flex rounded-full h-3 w-3 bg-green-400';
+            dotPing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75';
+            connLabel.textContent = 'Connected & Live';
+            connLabel.className = 'text-sm font-semibold text-green-300';
+            connSub.textContent = 'Camera session active — streaming frames';
+            connIcon.innerHTML = '<i data-lucide="radio" class="w-5 h-5 text-green-300"></i>';
+            connectionPanel.className = 'bg-green-950/60 backdrop-blur-md rounded-xl p-4 border border-green-600/40';
+        } else if (state === 'disconnected') {
+            dotInner.className = 'relative inline-flex rounded-full h-3 w-3 bg-red-500';
+            dotPing.className = 'hidden';
+            connLabel.textContent = 'Disconnected';
+            connLabel.className = 'text-sm font-semibold text-red-400';
+            connSub.textContent = 'Cannot reach the server';
+            connIcon.innerHTML = '<i data-lucide="wifi-off" class="w-5 h-5 text-red-400"></i>';
+            connectionPanel.className = 'bg-gray-900/80 backdrop-blur-md rounded-xl p-4 border border-red-800/50';
+        }
+        lucide.createIcons();
+    }
 
     // Check server connectivity on load
     async function checkServer() {
@@ -183,17 +234,15 @@
             });
             const data = await res.json();
             if (data.success) {
-                serverStatus.textContent = data.camera_running ? '🟢 Camera Active' : '🟡 Connected';
-                serverStatus.className = 'text-xs ' + (data.camera_running ? 'text-green-400' : 'text-yellow-400');
+                setConnectionStatus(data.camera_running ? 'live' : 'connected');
                 hideError();
                 return true;
             }
         } catch (e) {
-            serverStatus.textContent = '🔴 Unreachable';
-            serverStatus.className = 'text-xs text-red-400';
+            setConnectionStatus('disconnected');
             showError(
                 'Server Unreachable',
-                'Cannot connect to ' + SERVER_URL + '. Make sure the server is running and the camera session has been started from the admin panel.'
+                'Cannot connect to the server. Make sure it is running and the camera session has been started from the admin panel.'
             );
             return false;
         }
@@ -209,11 +258,18 @@
         errorBanner.classList.remove('show');
     }
 
-    async function setupCamera() {
+    async function setupCamera(facingMode) {
+        // Stop existing stream tracks before switching
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+        }
+
+        const mode = facingMode || currentFacingMode;
+
         try {
             const constraints = { 
                 video: { 
-                    facingMode: "environment",
+                    facingMode: { ideal: mode },
                     width: { ideal: 640 },
                     height: { ideal: 480 }
                 },
@@ -222,16 +278,21 @@
             
             localStream = await navigator.mediaDevices.getUserMedia(constraints);
             localVideo.srcObject = localStream;
+            currentFacingMode = mode;
+            
+            // Mirror front camera for natural selfie view
+            localVideo.style.transform = (mode === 'user') ? 'scaleX(-1)' : 'scaleX(1)';
             
             localVideo.onloadedmetadata = () => {
                 streamButton.disabled = false;
                 updateStatus('READY', 'bg-gray-500', 'text-gray-900', 'wifi-off');
             };
         } catch (e) {
-            console.warn("Primary camera failed, trying fallback...", e);
+            console.warn("Camera with facingMode '" + mode + "' failed, trying fallback...", e);
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 localVideo.srcObject = localStream;
+                localVideo.style.transform = 'scaleX(1)';
                 streamButton.disabled = false;
                 updateStatus('READY', 'bg-gray-500', 'text-gray-900', 'wifi-off');
             } catch (err) {
@@ -245,6 +306,21 @@
             }
         }
     }
+
+    // Switch between front and back camera
+    async function switchCamera() {
+        const newMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+        switchCamBtn.disabled = true;
+        switchCamBtn.classList.add('opacity-50');
+        try {
+            await setupCamera(newMode);
+        } finally {
+            switchCamBtn.disabled = false;
+            switchCamBtn.classList.remove('opacity-50');
+        }
+    }
+
+    switchCamBtn.addEventListener('click', switchCamera);
 
     // Creating the canvas once to save memory
     const canvas = document.createElement('canvas');
@@ -351,6 +427,7 @@
         streamButton.classList.replace('hover:bg-blue-500', 'hover:bg-red-500');
         buttonText.textContent = "Stop Stream";
         updateStatus('LIVE', 'bg-green-500', 'text-green-900', 'wifi');
+        setConnectionStatus('live');
         latencyStats.classList.remove('hidden');
         hideError();
         
@@ -373,6 +450,7 @@
         streamButton.classList.replace('hover:bg-red-500', 'hover:bg-blue-500');
         buttonText.textContent = "Start Stream";
         updateStatus('READY', 'bg-gray-500', 'text-gray-900', 'wifi-off');
+        setConnectionStatus('connected');
         latencyStats.classList.add('hidden');
     }
 
