@@ -135,27 +135,6 @@
                 <canvas id="engagementChart"></canvas>
             </div>
         </div>
-
-        <!-- Delete Confirmation Modal -->
-        <div id="deleteConfirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden fade-in">
-            <div class="modal-glass-card rounded-2xl p-6 w-full max-w-sm m-4 text-center">
-                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i data-lucide="trash-2" class="w-8 h-8 text-red-500"></i>
-                </div>
-                <h2 class="text-xl font-bold text-slate-800 mb-2">Delete Student?</h2>
-                <p class="text-sm text-slate-600 mb-1">This will permanently delete:</p>
-                <p id="deleteStudentInfo" class="text-sm font-semibold text-red-600 mb-4"></p>
-                <ul class="text-xs text-slate-500 mb-6 space-y-1">
-                    <li>• All face recognition images</li>
-                    <li>• Attendance records</li>
-                    <li>• Model training data</li>
-                </ul>
-                <div class="flex gap-3">
-                    <button onclick="closeDeleteModal()" class="flex-1 bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">Cancel</button>
-                    <button id="confirmDeleteBtn" class="flex-1 bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">Delete</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- [NEW] Student List Modal -->
@@ -176,6 +155,26 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal (highest z-index so it always appears on top) -->
+    <div id="deleteConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] hidden fade-in">
+        <div class="modal-glass-card rounded-2xl p-6 w-full max-w-sm m-4 text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="trash-2" class="w-8 h-8 text-red-500"></i>
+            </div>
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Delete Student?</h2>
+            <p class="text-sm text-slate-600 mb-1">This will permanently delete:</p>
+            <p id="deleteStudentInfo" class="text-sm font-semibold text-red-600 mb-4"></p>
+            <ul class="text-xs text-slate-500 mb-6 space-y-1">
+                <li>• All face recognition images</li>
+                <li>• Attendance records</li>
+                <li>• Model training data</li>
+            </ul>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">Cancel</button>
+                <button id="confirmDeleteBtn" class="flex-1 bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">Delete</button>
+            </div>
+        </div>
+    </div>
 
 <script>
     let latestAttendanceData = [];
@@ -398,6 +397,8 @@
         pendingDeleteRoll = roll;
         pendingDeleteName = name;
         document.getElementById('deleteStudentInfo').textContent = `${name} (Roll: ${roll})`;
+        // Close student list modal first so delete modal is fully visible
+        document.getElementById('studentListModal').classList.add('hidden');
         document.getElementById('deleteConfirmModal').classList.remove('hidden');
         document.getElementById('confirmDeleteBtn').onclick = confirmDelete;
         lucide.createIcons();
@@ -405,6 +406,8 @@
 
     function closeDeleteModal() {
         document.getElementById('deleteConfirmModal').classList.add('hidden');
+        // Reopen the student list so user can continue managing students
+        showStudentList();
         pendingDeleteRoll = '';
         pendingDeleteName = '';
     }
@@ -421,8 +424,12 @@
             });
             const data = await res.json();
             if (data.success) {
-                closeDeleteModal();
-                loadDashboard();
+                document.getElementById('deleteConfirmModal').classList.add('hidden');
+                pendingDeleteRoll = '';
+                pendingDeleteName = '';
+                // Reload data then reopen the student list with updated data
+                await loadDashboard();
+                showStudentList();
             } else {
                 alert('Error: ' + (data.error || 'Failed to delete'));
             }
