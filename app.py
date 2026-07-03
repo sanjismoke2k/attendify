@@ -2,11 +2,12 @@ import os
 import cv2
 import time
 import json
+import shutil
 import numpy as np
 import pandas as pd
 import base64
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from threading import Thread, Lock
 from flask import Flask, jsonify, send_from_directory, request, Response, session, redirect, url_for
 
@@ -24,6 +25,13 @@ OPENCV_LABELS_PATH = "labels.csv"
 # ==========================================
 SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "admin123")
 # ==========================================
+
+# --- Indian Standard Time (IST) ---
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def now_ist():
+    """Return current datetime in IST regardless of server location."""
+    return datetime.now(IST)
 
 # --- Default Settings ---
 config = {
@@ -92,7 +100,7 @@ def seed_default_teacher():
             "password": hashlib.sha256("000".encode()).hexdigest(),
             "dept": "Testing",
             "status": "approved",
-            "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "registered_at": now_ist().strftime("%Y-%m-%d %H:%M:%S")
         }
         teachers.append(default_teacher)
         db["teachers"] = teachers
@@ -126,7 +134,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'attendify-dev-secret-key-change-i
 def health_check():
     return jsonify({
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_ist().isoformat(),
         "camera_running": camera_running,
         "model_trained": os.path.exists(OPENCV_MODEL_PATH)
     })
@@ -171,7 +179,7 @@ def register_user():
         "password": pass_hash,
         "dept": data.get('dept', ''),
         "status": "pending",
-        "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "registered_at": now_ist().strftime("%Y-%m-%d %H:%M:%S")
     }
 
     collection.append(new_user)
@@ -214,6 +222,16 @@ def login_user():
 def logout_user_api():
     session.clear()
     return jsonify({"success": True})
+
+@app.route("/api/auth/session_info")
+def session_info():
+    """Return current session info for frontend role checks."""
+    return jsonify({
+        "user_id": session.get('user_id'),
+        "user_name": session.get('user_name'),
+        "role": session.get('role'),
+        "is_admin": session.get('is_admin', False)
+    })
 
 @app.route("/logout")
 def logout_page_redirect():
@@ -450,6 +468,11 @@ def get_dashboard_data():
         else:
             merged_df['Status'] = merged_df['Status'].fillna('absent')
 
+        # Ensure all expected columns exist (fixes 'undefined' on dashboard)
+        for col in ['First Seen', 'Last Seen', 'Time on Camera']:
+            if col not in merged_df.columns:
+                merged_df[col] = 'N/A'
+
         merged_df = merged_df.fillna('N/A')
 
         if session.get('role') == 'student':
@@ -477,6 +500,67 @@ def get_student_list():
         return jsonify(pd.read_csv(OPENCV_LABELS_PATH).to_dict(orient='records'))
     except pd.errors.EmptyDataError:
         return jsonify([])
+
+@app.route("/api/delete_student", methods=["POST"])
+def api_delete_student():
+    """Delete a student completely: face images, model data, and attendance records."""
+    if not session.get('is_admin'):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    try:
+        data = request.json
+        roll = str(data.get('roll', '')).strip()
+        name = str(data.get('name', '')).strip()
+        if not roll:
+            return jsonify({"success": False, "error": "Roll number is required"}), 400
+
+        deleted_items = []
+
+        # 1. Delete face image folder from dataset
+        if os.path.exists(DATASET_DIR):
+            for folder in os.listdir(DATASET_DIR):
+                folder_path = os.path.join(DATASET_DIR, folder)
+                if os.path.isdir(folder_path):
+                    try:
+                        folder_roll = folder.split("_", 1)[0]
+                    except (ValueError, IndexError):
+                        continue
+                    if folder_roll == roll:
+                        shutil.rmtree(folder_path)
+                        deleted_items.append(f"Face images: {folder}")
+
+        # 2. Remove from attendance CSV
+        if os.path.exists(ATTEND_CSV):
+            try:
+                att_df = pd.read_csv(ATTEND_CSV)
+                att_df['Roll Number'] = att_df['Roll Number'].astype(str)
+                before_count = len(att_df)
+                att_df = att_df[att_df['Roll Number'] != roll]
+                if len(att_df) < before_count:
+                    att_df.to_csv(ATTEND_CSV, index=False)
+                    deleted_items.append("Attendance records")
+            except Exception as e:
+                print(f"[WARN] Could not clean attendance CSV: {e}")
+
+        # 3. Retrain OpenCV model (removes student from model + labels)
+        for file in [OPENCV_MODEL_PATH, OPENCV_LABELS_PATH]:
+            if os.path.exists(file):
+                os.remove(file)
+                deleted_items.append(f"Model file: {file}")
+
+        # Retrain if there are still students in the dataset
+        remaining_folders = [f for f in os.listdir(DATASET_DIR) if os.path.isdir(os.path.join(DATASET_DIR, f))] if os.path.exists(DATASET_DIR) else []
+        if remaining_folders:
+            from threading import Thread
+            Thread(target=train_opencv_model, daemon=True).start()
+            deleted_items.append("Model retraining initiated")
+
+        if not deleted_items:
+            return jsonify({"success": False, "error": f"No data found for roll number: {roll}"}), 404
+
+        return jsonify({"success": True, "message": f"Student (Roll: {roll}) deleted successfully.", "deleted": deleted_items})
+    except Exception as e:
+        print(f"[ERROR] Delete student: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 def stream_frames():
     global output_frame, camera_running
@@ -625,7 +709,7 @@ def recognize_and_attend():
         no_frame_count = 0  # Reset counter when we get a frame
 
         # --- Timing ---
-        now = datetime.now()
+        now = now_ist()
         time_delta = time.time() - last_frame_time
         last_frame_time = time.time()
 
@@ -681,8 +765,8 @@ def recognize_and_attend():
             row = {
                 "Roll Number": r,
                 "Name": v["name"],
-                "First Seen": v["first_seen"].strftime("%Y-%m-%d %H:%M:%S"),
-                "Last Seen": v["last_seen"].strftime("%Y-%m-%d %H:%M:%S"),
+                "First Seen": v["first_seen"].strftime("%d-%b-%Y %I:%M:%S %p IST"),
+                "Last Seen": v["last_seen"].strftime("%d-%b-%Y %I:%M:%S %p IST"),
                 "Status": v["status"]
             }
             seconds = v.get("seconds", 0)

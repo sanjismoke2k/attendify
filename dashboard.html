@@ -123,6 +123,7 @@
                             <th scope="col" class="px-6 py-4">Last Seen</th>
                             <th scope="col" class="px-6 py-4">Time on Camera</th>
                             <th scope="col" class="px-6 py-4">Status</th>
+                            <th scope="col" class="px-6 py-4 actions-col">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="attendance-body"></tbody>
@@ -133,6 +134,27 @@
         <div id="statisticsContainer" class="mt-8 glass-card rounded-3xl p-4 sm:p-6" style="display: none;">
             <div class="relative h-96">
                 <canvas id="engagementChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteConfirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden fade-in">
+            <div class="modal-glass-card rounded-2xl p-6 w-full max-w-sm m-4 text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="trash-2" class="w-8 h-8 text-red-500"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800 mb-2">Delete Student?</h2>
+                <p class="text-sm text-slate-600 mb-1">This will permanently delete:</p>
+                <p id="deleteStudentInfo" class="text-sm font-semibold text-red-600 mb-4"></p>
+                <ul class="text-xs text-slate-500 mb-6 space-y-1">
+                    <li>• All face recognition images</li>
+                    <li>• Attendance records</li>
+                    <li>• Model training data</li>
+                </ul>
+                <div class="flex gap-3">
+                    <button onclick="closeDeleteModal()" class="flex-1 bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">Cancel</button>
+                    <button id="confirmDeleteBtn" class="flex-1 bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">Delete</button>
+                </div>
             </div>
         </div>
     </div>
@@ -161,19 +183,36 @@
     let allStudentsData = [];
     let engagementChartInstance;
     let isStatisticsVisible = false;
+    let isAdmin = false;
+
+    // Safe value accessor - prevents 'undefined' from showing
+    function safeVal(val) {
+        if (val === undefined || val === null || val === '' || val === 'nan') return 'N/A';
+        return val;
+    }
 
     async function loadDashboard() {
         try {
             const tbody = document.querySelector("#attendance-body");
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">Loading...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-slate-500">Loading...</td></tr>`;
             
-            const [dashboardRes, studentsRes] = await Promise.all([
+            const [dashboardRes, studentsRes, sessionRes] = await Promise.all([
                 fetch("/api/dashboard_data"),
-                fetch("/api/student_list")
+                fetch("/api/student_list"),
+                fetch("/api/auth/session_info")
             ]);
 
             const dashboardData = await dashboardRes.json();
             allStudentsData = await studentsRes.json();
+            try {
+                const sessionData = await sessionRes.json();
+                isAdmin = sessionData.is_admin || false;
+            } catch(e) { isAdmin = false; }
+
+            // Show/hide actions column based on admin role
+            document.querySelectorAll('.actions-col').forEach(el => {
+                el.style.display = isAdmin ? '' : 'none';
+            });
             
             latestAttendanceData = dashboardData.attendance;
             const stats = dashboardData.stats;
@@ -204,7 +243,7 @@
             if (isStatisticsVisible) renderEngagementChart(latestAttendanceData);
 
         } catch (error) {
-            document.querySelector("#attendance-body").innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Error loading data. Server might be offline.</td></tr>`;
+            document.querySelector("#attendance-body").innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-500">Error loading data. Server might be offline.</td></tr>`;
         } finally {
              lucide.createIcons();
         }
@@ -223,22 +262,24 @@
         });
 
         if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No matching records found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-slate-500">No matching records found.</td></tr>`;
             return;
         }
 
         filteredData.forEach(student => {
             const isPresent = student["Status"] === "present";
-            const statusPill = `<span class="px-3 py-1 text-xs font-semibold rounded-full ${isPresent ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${student["Status"]}</span>`;
+            const statusPill = `<span class="px-3 py-1 text-xs font-semibold rounded-full ${isPresent ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${safeVal(student["Status"])}</span>`;
+            const deleteBtn = isAdmin ? `<td class="px-6 py-3 actions-col"><button onclick="showDeleteModal('${student['Roll Number']}', '${student['Name']}')" class="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors" title="Delete student"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>` : `<td class="px-6 py-3 actions-col" style="display:none;"></td>`;
             const tr = document.createElement("tr");
             tr.className = "border-b border-white/30 hover:bg-white/20 transition-colors";
             tr.innerHTML = `
-                <td class="px-6 py-3 font-medium text-slate-800">${student["Name"]}</td>
-                <td class="px-6 py-3 text-slate-600">${student["Roll Number"]}</td>
-                <td class="px-6 py-3 text-slate-600">${student["First Seen"]}</td>
-                <td class="px-6 py-3 text-slate-600">${student["Last Seen"]}</td>
-                <td class="px-6 py-3 text-slate-600">${student["Time on Camera"]}</td>
+                <td class="px-6 py-3 font-medium text-slate-800">${safeVal(student["Name"])}</td>
+                <td class="px-6 py-3 text-slate-600">${safeVal(student["Roll Number"])}</td>
+                <td class="px-6 py-3 text-slate-600">${safeVal(student["First Seen"])}</td>
+                <td class="px-6 py-3 text-slate-600">${safeVal(student["Last Seen"])}</td>
+                <td class="px-6 py-3 text-slate-600">${safeVal(student["Time on Camera"])}</td>
                 <td class="px-6 py-3">${statusPill}</td>
+                ${deleteBtn}
             `;
             tbody.appendChild(tr);
         });
@@ -341,10 +382,53 @@
         document.body.removeChild(link);
     }
     
+    // --- Delete Student Functions ---
+    let pendingDeleteRoll = '';
+    let pendingDeleteName = '';
+
+    function showDeleteModal(roll, name) {
+        pendingDeleteRoll = roll;
+        pendingDeleteName = name;
+        document.getElementById('deleteStudentInfo').textContent = `${name} (Roll: ${roll})`;
+        document.getElementById('deleteConfirmModal').classList.remove('hidden');
+        document.getElementById('confirmDeleteBtn').onclick = confirmDelete;
+        lucide.createIcons();
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteConfirmModal').classList.add('hidden');
+        pendingDeleteRoll = '';
+        pendingDeleteName = '';
+    }
+
+    async function confirmDelete() {
+        const btn = document.getElementById('confirmDeleteBtn');
+        btn.textContent = 'Deleting...';
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/delete_student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roll: pendingDeleteRoll, name: pendingDeleteName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeDeleteModal();
+                loadDashboard();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to delete'));
+            }
+        } catch (e) {
+            alert('Network error. Please try again.');
+        } finally {
+            btn.textContent = 'Delete';
+            btn.disabled = false;
+        }
+    }
+
     lucide.createIcons();
     loadDashboard();
     setInterval(loadDashboard, 10000);
 </script>
 </body>
 </html>
-
