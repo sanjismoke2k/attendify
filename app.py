@@ -80,6 +80,27 @@ def is_remote_source(source):
 os.makedirs(DATASET_DIR, exist_ok=True)
 load_config()
 
+# --- Seed Default Test Teacher ---
+def seed_default_teacher():
+    """Add a default test teacher (ID: 000, Password: 000) if not already present."""
+    db = load_users()
+    teachers = db.get("teachers", [])
+    if not any(t['id'] == '000' for t in teachers):
+        default_teacher = {
+            "id": "000",
+            "name": "Test Teacher",
+            "password": hashlib.sha256("000".encode()).hexdigest(),
+            "dept": "Testing",
+            "status": "approved",
+            "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        teachers.append(default_teacher)
+        db["teachers"] = teachers
+        save_users(db)
+        print("[INFO] Default test teacher seeded (ID: 000, Password: 000)")
+
+seed_default_teacher()
+
 camera_running = False
 camera_lock = Lock()
 output_frame = None
